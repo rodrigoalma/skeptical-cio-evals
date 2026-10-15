@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skeptical CIO transcripts</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1da;
+  --seller: #eef3fb; --buyer: #f4f2ec; --accent: #c4582f; --pass: #2f7d4f; --fail: #b3362f;
+  --chip: #efede6;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a998f; --line: #34332f;
+    --seller: #1f2a3a; --buyer: #2a2925; --accent: #e07a4f; --pass: #5bb381; --fail: #e0665e; --chip: #2c2b27; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 18px 20px 10px; border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 18px; letter-spacing: -0.01em; }
+header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.mock { color: var(--accent); font-weight: 600; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; }
+main { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; min-height: calc(100vh - 120px); }
+#list { border-right: 1px solid var(--line); overflow-y: auto; max-height: calc(100vh - 120px); }
+.item { padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.item:hover, .item.active { background: var(--panel); }
+.item .t { font-weight: 600; font-size: 14px; }
+.item .s { color: var(--muted); font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.badge { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; color: #fff; }
+.badge.pass { background: var(--pass); } .badge.fail { background: var(--fail); }
+#detail { padding: 20px; overflow-y: auto; max-height: calc(100vh - 120px); }
+.cols { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 24px; align-items: start; }
+.turn { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; max-width: 92%; }
+.turn.seller { background: var(--seller); margin-left: auto; }
+.turn.buyer { background: var(--buyer); }
+.who { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 2px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.row { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 3px 0; }
+.bar { height: 6px; background: var(--chip); border-radius: 3px; margin: 2px 0 6px; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.claim { font-size: 13px; border-left: 3px solid var(--fail); padding: 4px 8px; margin: 6px 0; }
+.claim.minor { border-color: var(--muted); }
+.muted { color: var(--muted); font-size: 13px; }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+pre { white-space: pre-wrap; font: inherit; font-size: 13px; }
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; }
+  #list { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--line); }
+  #detail { padding: 16px; max-height: none; }
+  .cols { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Skeptical CIO transcripts</h1>
+  <p id="sub"></p>
+</header>
+<div class="filters">
+  <select id="f-persona"></select>
+  <select id="f-model"></select>
+  <select id="f-prompt"></select>
+  <select id="f-pass"><option value="">Pass and fail</option><option value="1">Passed</option><option value="0">Failed</option></select>
+</div>
+<main>
+  <nav id="list"></nav>
+  <section id="detail"><p class="muted">Pick a call on the left.</p></section>
+</main>
+<script>
+const DATA = /*__DATA__*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const yes = (b) => (b ? "Yes" : "No");
+
+$("sub").innerHTML = `Run <code>${esc(DATA.run)}</code> · ${DATA.calls.length} calls` +
+  (DATA.mock ? ` · <span class="mock">mock run, not real results</span>` : "");
+
+function fill(id, label, values) {
+  $(id).innerHTML = `<option value="">${label}</option>` +
+    [...new Set(values)].sort().map((v) => `<option>${esc(v)}</option>`).join("");
+  $(id).onchange = render;
+}
+fill("f-persona", "All personas", DATA.calls.map((c) => c.persona));
+fill("f-model", "All models", DATA.calls.map((c) => c.model));
+fill("f-prompt", "All prompts", DATA.calls.map((c) => c.prompt));
+$("f-pass").onchange = render;
+
+let current = null;
+
+function render() {
+  const fp = $("f-persona").value, fm = $("f-model").value, fr = $("f-prompt").value, fs = $("f-pass").value;
+  const calls = DATA.calls.filter((c) =>
+    (!fp || c.persona === fp) && (!fm || c.model === fm) && (!fr || c.prompt === fr) &&
+    (!fs || String(+c.row.passed) === fs));
+  $("list").innerHTML = calls.map((c) => `
+    <div class="item ${c.id === current ? "active" : ""}" data-id="${esc(c.id)}">
+      <div class="t">${esc(c.persona)}</div>
+      <div class="s"><span class="badge ${c.row.passed ? "pass" : "fail"}">${c.row.passed ? "PASS" : "FAIL"}</span>
+        ${esc(c.model)} · ${esc(c.prompt)} · ${c.row.weighted_score.toFixed(2)}</div>
+    </div>`).join("") || `<p class="muted" style="padding:16px">No calls match.</p>`;
+  document.querySelectorAll(".item").forEach((el) => (el.onclick = () => show(el.dataset.id)));
+}
+
+function show(id) {
+  current = id;
+  const c = DATA.calls.find((x) => x.id === id);
+  const r = c.row, d = c.debrief, j = c.judge;
+  const turns = c.turns.map((t) => `
+    <div class="turn ${t.speaker}"><div class="who">${t.speaker}</div>${esc(t.text).replace(/\n/g, "<br>")}</div>`).join("");
+  const scores = DATA.dims.map((k) => `
+    <div class="row"><span>${esc(k.replace(/_/g, " "))}</span><b>${j.scores[k]}</b></div>
+    <div class="bar"><i style="width:${j.scores[k] * 20}%"></i></div>`).join("");
+  const claims = (j.unsupported_claims || []).map((cl) => `
+    <div class="claim ${esc(cl.severity)}">"${esc(cl.quote)}"<br><span class="muted">${esc(cl.severity)}: ${esc(cl.issue)}</span></div>`).join("")
+    || `<p class="muted">None found.</p>`;
+  $("detail").innerHTML = `
+    <div class="cols">
+      <div>${turns}<p class="muted">Call ended by: ${esc(c.ended_by)}</p></div>
+      <div>
+        <div class="card"><h3>Result</h3>
+          <div class="row"><span>Passed</span><b>${yes(r.passed)}</b></div>
+          <div class="row"><span>Weighted score</span><b>${r.weighted_score.toFixed(2)}</b></div>
+          <div class="row"><span>Talk ratio (seller)</span><b>${r.talk_ratio}</b></div>
+          <div class="row"><span>Seller questions</span><b>${r.seller_questions}</b></div>
+          <div class="row"><span>Seller cost</span><b>$${r.seller_cost_usd.toFixed(4)}</b></div>
+        </div>
+        <div class="card"><h3>Buyer debrief</h3>
+          <div class="row"><span>Hidden concern surfaced</span><b>${yes(d.hidden_concern_surfaced)}</b></div>
+          <div class="row"><span>Concern handled</span><b>${yes(d.hidden_concern_addressed)}</b></div>
+          <div class="row"><span>Dealbreaker hit</span><b>${yes(d.dealbreaker_hit)}</b></div>
+          <div class="row"><span>Takes next meeting</span><b>${yes(d.would_take_next_meeting)}</b></div>
+          <div class="row"><span>Trust</span><b>${d.trust} / 5</b></div>
+          ${d.next_step_agreed ? `<p class="muted">Next step: ${esc(d.next_step_agreed)}</p>` : ""}
+          ${d.dealbreaker_detail ? `<p class="muted">Dealbreaker: ${esc(d.dealbreaker_detail)}</p>` : ""}
+          <p><i>"${esc(d.comment)}"</i></p>
+        </div>
+        <div class="card"><h3>Judge scores</h3>${scores}</div>
+        <div class="card"><h3>Unsupported claims</h3>${claims}</div>
+        <div class="card"><h3>Judge notes</h3>
+          <p class="muted">Best: ${esc(j.best_moment)}</p>
+          <p class="muted">Worst: ${esc(j.worst_moment)}</p>
+          <details><summary>Full reasoning</summary><pre>${esc(j.reasoning)}</pre></details>
+        </div>
+      </div>
+    </div>`;
+  render();
+}
+
+render();
+if (DATA.calls.length) show(DATA.calls[0].id);
+</script>
+</body>
+</html>

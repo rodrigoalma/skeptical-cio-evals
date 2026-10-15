@@ -1,0 +1,71 @@
+# Scoring rubric for the judge. Each dimension is scored 1 to 5.
+# Edit the anchors to match how you'd coach a real SA. This file is the
+# single source of truth: the judge prompt and the labeling tool both read it.
+
+dimensions:
+  discovery:
+    weight: 0.25
+    question: Did the seller learn about the buyer's business and real concerns before pitching?
+    anchors:
+      1: Pitched immediately. Asked no real questions, or only yes/no ones.
+      2: Asked a question or two, then went back to pitching without using the answers.
+      3: Asked reasonable questions but stayed on the surface. Did not get to what is really blocking the buyer.
+      4: Asked good open questions, followed up on answers, and got to most of what matters.
+      5: Uncovered the buyer's real underlying concern through thoughtful follow-ups, and adjusted the conversation around it.
+
+  objection_handling:
+    weight: 0.20
+    question: When the buyer pushed back, did the seller respond well?
+    anchors:
+      1: Ignored, dismissed or argued with the objection, or caved completely.
+      2: Responded defensively or with a canned answer that did not address the concern.
+      3: Addressed the objection reasonably but generically.
+      4: Acknowledged it, clarified what was behind it, and answered with substance.
+      5: Turned the objection into a deeper conversation and left the buyer more confident than before.
+
+  honesty:
+    weight: 0.20
+    question: Did the seller stay within what they actually know and are allowed to promise?
+    anchors:
+      1: Made a major false claim or forbidden promise (discount, compliance, accuracy number, data location).
+      2: Made one or more claims not supported by the fact sheet, or oversold capabilities.
+      3: Mostly accurate, with some vague or slightly inflated statements.
+      4: Accurate. Said "I don't know" or offered to follow up where appropriate.
+      5: Accurate and proactively candid about limitations in a way that built trust.
+
+  business_value:
+    weight: 0.15
+    question: Did the seller connect Claude to the buyer's business outcomes (or, for partners, to how the partner's business grows)?
+    anchors:
+      1: Only talked about features or model specs.
+      2: Mentioned generic benefits ("efficiency", "productivity") without connecting to this buyer.
+      3: Connected to the buyer's situation in a general way.
+      4: Tied the conversation to specific outcomes the buyer cares about.
+      5: Framed a clear, credible path to value that the buyer could repeat to their boss.
+
+  listening:
+    weight: 0.10
+    question: Did the seller listen, keep turns short and build on what the buyer said?
+    anchors:
+      1: Long monologues. Ignored what the buyer said.
+      2: Turns often too long. Rarely referenced the buyer's words.
+      3: Reasonable length. Some responsiveness.
+      4: Concise. Clearly built on the buyer's answers.
+      5: Conversational and precise. The buyer clearly felt heard.
+
+  next_step:
+    weight: 0.10
+    question: Did the call end with a concrete, agreed next step?
+    anchors:
+      1: No next step.
+      2: Vague next step ("let's stay in touch").
+      3: A next step was proposed but not confirmed by the buyer.
+      4: A concrete next step was proposed and the buyer agreed.
+      5: A concrete next step tied to the buyer's main concern, agreed with owners or timing.
+
+# A call "passes" only if every condition below holds.
+pass_criteria:
+  hidden_concern_surfaced: true      # from the buyer's debrief
+  hidden_concern_addressed: true     # from the buyer's debrief
+  no_overpromise: true               # from the judge
+  min_weighted_score: 3.5

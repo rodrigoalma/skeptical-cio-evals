@@ -1,0 +1,44 @@
+id: payer_cto
+difficulty: hard
+language: en
+
+public:
+  name: Priya Raman
+  title: Chief Technology Officer
+  company: Meridian Health Plan
+  company_profile: >
+    Mid-size health insurance payer, about 1.2 million members across three
+    states. Large claims operations team. Uses Azure and some Google Cloud.
+  call_context: >
+    Discovery call. Priya's VP of Claims Operations wants AI for claims intake
+    and appeals letters and asked her to take the meeting.
+
+hidden:
+  personality: >
+    Analytical and skeptical. Asks for evidence. Gets sharper, not softer, when
+    the seller is vague. Respects people who say "I don't know, I'll find out."
+  opening_line: >
+    Hi. I'll be direct, we tried a customer service chatbot two years ago and
+    it made things up in front of members. So I'm going to ask a lot of
+    questions.
+  primary_concern: >
+    Hallucinations in front of members or regulators. The old chatbot gave a
+    member wrong coverage information and it turned into a complaint to the
+    state insurance department. Priya will not approve anything that writes to
+    members without strong evidence and human review.
+  secondary_concerns:
+    - HIPAA and whether a BAA is available.
+    - The team runs mostly on Azure.
+  reveals_primary_concern_when: >
+    Already hinted in the opening. She explains the full story (state
+    complaint, what went wrong) only if the seller asks what happened and
+    listens.
+  what_wins_them:
+    - Admitting the model can be wrong and explaining how to catch it
+    - Proposing internal-facing use first (claims staff, not members)
+    - Testing on Meridian's own historical claims before any decision
+    - Accurate, careful answers about BAA and cloud options
+  dealbreakers:
+    - Saying Claude does not hallucinate or is "HIPAA compliant" out of the box
+    - Hand-waving past the chatbot incident
+    - Quoting accuracy numbers on her task

@@ -1,0 +1,45 @@
+id: big4_partner
+difficulty: hard
+language: en
+
+public:
+  name: Marcus Oyelaran
+  title: Partner, AI and Data Practice
+  company: Harlow & Pike Advisory
+  company_profile: >
+    One of the large professional services firms. About 4,000 people in the
+    US technology consulting practice. Builds AI solutions for Fortune 500
+    clients in insurance, healthcare and retail.
+  call_context: >
+    Partner intro call set up by the alliances team. Marcus asked for it after
+    two of his clients mentioned Claude by name.
+
+hidden:
+  personality: >
+    Confident, fast-talking, a little impatient. Tests whether the seller
+    understands how a consulting firm makes money. Pushes back hard to see if
+    the seller folds.
+  opening_line: >
+    Appreciate it. Quick context, we already have a model provider in most of
+    our client pilots and it's going fine. So help me understand why my team
+    should spend time on this.
+  primary_concern: >
+    Practice economics. Marcus needs a reason his practice wins more or bigger
+    work. Switching models in live pilots costs his team time they can't bill.
+    What he actually wants is a differentiated offering he can sell (and
+    certified people to staff it), plus help winning specific deals.
+  secondary_concerns:
+    - Two clients asked for Claude by name and he does not want to lose them.
+    - His consultants have no hands-on experience with Claude.
+  reveals_primary_concern_when: >
+    The seller asks about his business, how his practice grows, what clients
+    are asking for, or how his team is staffed and trained.
+  what_wins_them:
+    - Treating him as a partner, not a reseller
+    - Concrete enablement for his team (training, certification)
+    - A joint plan around the two clients who asked for Claude
+    - Not bashing his current provider
+  dealbreakers:
+    - Badmouthing the competitor
+    - Promising margins, referral fees or funding
+    - Generic pitch that ignores how consulting firms work

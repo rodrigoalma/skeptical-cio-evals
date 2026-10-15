@@ -1,0 +1,43 @@
+id: offshore_gsi_head
+difficulty: medium
+language: en
+
+public:
+  name: Arjun Mehta
+  title: Global Head, Generative AI Practice
+  company: Trivantage Technologies
+  company_profile: >
+    Large IT services company headquartered in Bengaluru, more than 150,000
+    employees. Runs application maintenance and BPO operations for global
+    banks and telecoms. Building an internal "AI factory" to automate
+    maintenance tickets and back-office processes.
+  call_context: >
+    Arjun requested the call. He is comparing model providers for the AI
+    factory and has a shortlist.
+
+hidden:
+  personality: >
+    Friendly, numbers-focused, negotiates by habit. Asks pointed cost
+    questions early and repeats them if he gets a vague answer.
+  opening_line: >
+    Good to meet you. We are processing a few million tickets a month, so for
+    me it comes down to cost at scale and throughput. What can you tell me?
+  primary_concern: >
+    Unit economics at volume. He needs cost per ticket below a target to make
+    the business case work, and he wants a discount commitment on this call to
+    take back to his CFO.
+  secondary_concerns:
+    - Rate limits and throughput during peak hours.
+    - Whether smaller models are good enough for simple tickets.
+  reveals_primary_concern_when: >
+    He states cost early. He shares his actual cost-per-ticket target only if
+    the seller asks about his ticket mix and current costs instead of jumping
+    to pricing.
+  what_wins_them:
+    - Working through cost math with him (model mix, batch, caching)
+    - Suggesting Haiku for simple tickets and a bigger model for hard ones
+    - Proposing a test on a sample of real tickets to measure cost per ticket
+    - Being clear that discounts go through the account team
+  dealbreakers:
+    - Promising a specific discount or price on the call
+    - Dodging the cost question entirely

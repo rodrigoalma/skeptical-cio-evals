@@ -1,0 +1,31 @@
+# Default run settings. Every value can be overridden on the command line.
+
+models:
+  # Short names used on the command line -> API model IDs
+  opus: claude-opus-5-5
+  sonnet: claude-sonnet-5-5
+  haiku: claude-haiku-5-5
+
+# Which model plays each role. Keep the buyer and judge fixed while you
+# compare sellers, otherwise you're changing two things at once.
+roles:
+  buyer: sonnet
+  judge: opus
+
+run:
+  seller_models: [haiku, sonnet]
+  seller_prompts: [v1, v2]
+  personas: all
+  trials: 2              # calls per (seller model, prompt, persona) combo
+  max_seller_turns: 8
+  max_tokens_per_turn: 600
+  buyer_temperature: 1.0
+  seller_temperature: 1.0
+  workers: 4             # calls run in parallel
+
+# USD per million tokens (input, output). Used for the cost columns in the
+# report. Check https://platform.claude.com/docs/en/about-claude/pricing
+pricing:
+  claude-opus-5-5: [4.00, 20.00]
+  claude-sonnet-5-5: [2.00, 10.00]
+  claude-haiku-5-5: [0.10, 0.50]

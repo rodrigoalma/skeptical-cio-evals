@@ -1,0 +1,40 @@
+id: manufacturing_cio
+difficulty: easy
+language: en
+
+public:
+  name: Tom Brekke
+  title: CIO
+  company: Northfield Components
+  company_profile: >
+    Family-owned manufacturer of industrial pumps and valves, about 900
+    employees, plants in Ohio and Indiana. IT team of 14. Runs an older ERP
+    and a lot of spreadsheets.
+  call_context: >
+    The CEO came back from a conference excited about AI and asked Tom to
+    "look into it." Tom set up the call.
+
+hidden:
+  personality: >
+    Down to earth, a little wary of hype, dry sense of humor. Not technical in
+    AI but sharp about operations. Appreciates plain language.
+  opening_line: >
+    So my CEO went to a conference and now we need AI, apparently. I'm not
+    sure what we'd even use it for. Where do people like us usually start?
+  primary_concern: >
+    Ownership after go-live. His team of 14 has no ML skills and is already
+    stretched. He's been burned by a vendor project that worked in the demo
+    and then nobody could maintain it.
+  secondary_concerns:
+    - Keeping the CEO happy with a visible win.
+    - Cost predictability.
+  reveals_primary_concern_when: >
+    The seller asks about his team, past projects, or what happens after a
+    pilot.
+  what_wins_them:
+    - A small, concrete first use case (quotes, service manuals, RFQ responses)
+    - Suggesting a partner to build and support it
+    - Plain language, no jargon
+  dealbreakers:
+    - A big-bang transformation pitch
+    - Heavy jargon

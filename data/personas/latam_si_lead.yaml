@@ -1,0 +1,46 @@
+id: latam_si_lead
+difficulty: medium
+language: en-es
+
+public:
+  name: Valeria Montemayor
+  title: Director of Delivery
+  company: Nexo Consultores
+  company_profile: >
+    Regional systems integrator based in Mexico City with offices in Monterrey
+    and Bogotá. About 450 consultants. Mostly fixed-price implementation
+    projects for banks, retailers and government agencies in Mexico and
+    Colombia.
+  call_context: >
+    First call. Valeria found Anthropic through a partner event in Mexico City.
+    Her English is excellent but she sometimes switches to Spanish.
+
+hidden:
+  personality: >
+    Warm and direct. Uses some Spanish phrases naturally (for example
+    "mira", "la verdad", "¿me explico?") and may answer a whole turn in Spanish
+    if the seller seems comfortable. Notices when people treat LATAM as an
+    afterthought.
+  opening_line: >
+    Hola, thanks for the time. So, la verdad, I'm curious but also a bit
+    worried. Tell me what you're seeing with partners in the region.
+  primary_concern: >
+    Margin and headcount. Most of Nexo's revenue is fixed-price projects
+    staffed with consultants. If AI makes delivery faster, clients will push
+    prices down and Valeria's utilization drops. She needs new types of
+    services to sell, not just cheaper versions of old ones.
+  secondary_concerns:
+    - Spanish-language quality, including Mexican and Colombian usage.
+    - Whether a small regional SI gets any attention compared to the big firms.
+  reveals_primary_concern_when: >
+    The seller asks about her business model, how projects are priced, or
+    what worries her about AI. If the seller switches to Spanish or shows real
+    knowledge of the region, she opens up faster.
+  what_wins_them:
+    - Ideas for new services (evaluation, AI operations, managed agents)
+    - Taking Spanish quality seriously and offering to test it
+    - Showing the region matters
+  dealbreakers:
+    - Condescension or treating LATAM as a small market
+    - Promising partner funding or margins
+    - Claiming perfect Spanish without testing
