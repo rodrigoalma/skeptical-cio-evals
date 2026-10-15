@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import loaders
 from .grade import grade_call
-from .llm import LLM
+from .llm import LLM, ModelError
 
 SMOKE_FILE = loaders.DATA / "smoke" / "known_cases.yaml"
 
@@ -33,9 +33,16 @@ def run(llm: LLM, cfg: dict, log=print) -> bool:
     judge_effort = cfg.get("effort", {}).get("judge")
 
     all_ok = True
+    errors = 0
     log(f"Grading {len(load_cases())} known cases with judge {judge_model}...\n")
     for case in load_cases():
-        g = grade_call(case, personas[case["persona"]], llm, buyer_model, judge_model, rubric, judge_effort)
+        try:
+            g = grade_call(case, personas[case["persona"]], llm, buyer_model, judge_model, rubric, judge_effort)
+        except ModelError as e:  # a failed call says nothing about the grader, so report it apart
+            errors += 1
+            all_ok = False
+            log(f"[ERR ] {case['id']:18} {e}")
+            continue
         got = {
             "passed": g["passed"],
             "hidden_concern_surfaced": g["debrief"]["hidden_concern_surfaced"],
@@ -48,6 +55,10 @@ def run(llm: LLM, cfg: dict, log=print) -> bool:
             "  ".join(f"{k}={got[k]}" for k in case["expect"]))
         for k, (want, have) in misses.items():
             log(f"         expected {k}={want}, got {have}")
-    log("\nAll known cases graded as expected." if all_ok else
-        "\nThe grader disagreed with at least one known case. Read its reasoning before trusting a full run.")
+    if errors:
+        log(f"\n{errors} case(s) could not be graded. That is a failed call, not a grader verdict; run smoke again.")
+    elif all_ok:
+        log("\nAll known cases graded as expected.")
+    else:
+        log("\nThe grader disagreed with at least one known case. Read its reasoning before trusting a full run.")
     return all_ok

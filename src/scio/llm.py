@@ -102,7 +102,9 @@ class AnthropicLLM:
         )
         _check_model(model, resp.model, usage)
         if resp.stop_reason == "refusal":
-            raise ModelError("refusal", "the model declined this request", usage)
+            d = resp.stop_details
+            why = f" (category: {d.category or 'none'}{f', {d.explanation}' if d.explanation else ''})" if d else ""
+            raise ModelError("refusal", f"the model declined this request{why}", usage)
         text = "".join(b.text for b in resp.content if b.type == "text").strip()
         return text, usage
 

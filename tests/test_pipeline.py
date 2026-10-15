@@ -157,3 +157,20 @@ def test_auth_error_stops_the_run(tmp_path):
         runner._parallel(fn, jobs, 1, lambda _: None, tmp_path, "simulate")
     assert len(calls) <= 2
     assert not (tmp_path / "errors.jsonl").exists()
+
+
+def test_smoke_reports_a_refusal_and_keeps_going():
+    from scio import smoke
+    from scio.llm import ModelError
+
+    class RefusingJudge(MockLLM):
+        def structured(self, model, system, prompt, schema, max_tokens=16000, effort=None):
+            if "Appreciate the honesty" in prompt:  # only in the strong_discovery transcript
+                raise ModelError("refusal", "the model declined this request (category: none)")
+            return super().structured(model, system, prompt, schema, max_tokens, effort)
+
+    lines = []
+    ok = smoke.run(RefusingJudge(), loaders.load_config(), log=lines.append)
+    assert not ok
+    assert any(l.startswith("[ERR ] strong_discovery") and "refusal" in l for l in lines)
+    assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases()) - 1
