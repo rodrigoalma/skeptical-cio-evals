@@ -85,7 +85,8 @@ def test_kappa():
 
 def test_full_mock_run(tmp_path):
     cfg = loaders.load_config()
-    cfg["run"].update(personas="bank_cio,latam_si_lead", seller_models=["haiku"], seller_prompts=["v1", "v2"], trials=1)
+    cfg["run"].update(personas="bank_cio,latam_si_lead", seller_models=["haiku"], seller_prompts=["v1", "v2"],
+                      seller_efforts=["medium"], trials=1)
     run_dir = tmp_path / "run"
     runner.write_run_meta(cfg, run_dir, mock=True)
     llm = MockLLM()
@@ -97,7 +98,7 @@ def test_full_mock_run(tmp_path):
 
     path = report.build(run_dir, cfg)
     text = path.read_text()
-    assert "Mock run" in text and "| haiku | v2 |" in text
+    assert "Mock run" in text and "| haiku | v2 | medium |" in text
     html = (run_dir / "viewer.html").read_text()
     assert "/*__DATA__*/null" not in html
 
@@ -174,3 +175,41 @@ def test_smoke_reports_a_refusal_and_keeps_going():
     assert not ok
     assert any(l.startswith("[ERR ] strong_discovery") and "refusal" in l for l in lines)
     assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases()) - 1
+
+
+def test_effort_sweep_is_recorded_and_reported(tmp_path):
+    cfg = loaders.load_config()
+    cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["v2"],
+                      seller_efforts=["high", "low"], trials=1)
+    run_dir = tmp_path / "run"
+    runner.write_run_meta(cfg, run_dir, mock=True)
+    quiet = lambda *a: None
+    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+
+    calls = {c["seller_effort"]: c for c in runner.load_calls(run_dir)}
+    assert set(calls) == {"low", "high"}
+    assert calls["low"]["id"] == "bank_cio__haiku__v2__low__t1"
+    assert all(u["effort"] == "low" for u in calls["low"]["usage"]["seller"])
+    assert all(u["effort"] == cfg["effort"]["buyer"] for u in calls["low"]["usage"]["buyer"])
+    assert calls["low"]["grade"]["judge_effort"] == cfg["effort"]["judge"]
+
+    text = report.build(run_dir, cfg).read_text()
+    low, high = text.index("| haiku | v2 | low |"), text.index("| haiku | v2 | high |")
+    assert low < high  # effort levels sort by level, not alphabetically
+    assert "seller_effort" in (run_dir / "results.csv").read_text().splitlines()[0]
+
+
+def test_bad_or_missing_effort_is_rejected():
+    from scio import cli
+
+    cfg = loaders.load_config()
+    cli._check_efforts(cfg)
+    for bad in (["medium", "huge"], []):
+        cfg["run"]["seller_efforts"] = bad
+        with pytest.raises(SystemExit):
+            cli._check_efforts(cfg)
+    cfg = loaders.load_config()
+    cfg["effort"]["judge"] = None
+    with pytest.raises(SystemExit):
+        cli._check_efforts(cfg)

@@ -64,6 +64,7 @@ pre { white-space: pre-wrap; font: inherit; font-size: 13px; }
   <select id="f-persona"></select>
   <select id="f-model"></select>
   <select id="f-prompt"></select>
+  <select id="f-effort"></select>
   <select id="f-pass"><option value="">Pass and fail</option><option value="1">Passed</option><option value="0">Failed</option></select>
 </div>
 <main>
@@ -79,28 +80,31 @@ const yes = (b) => (b ? "Yes" : "No");
 $("sub").innerHTML = `Run <code>${esc(DATA.run)}</code> · ${DATA.calls.length} calls` +
   (DATA.mock ? ` · <span class="mock">mock run, not real results</span>` : "");
 
-function fill(id, label, values) {
+function fill(id, label, values, order) {
+  const rank = (v) => (order.includes(v) ? order.indexOf(v) : order.length);
+  const sorted = order ? [...new Set(values)].sort((a, b) => rank(a) - rank(b)) : [...new Set(values)].sort();
   $(id).innerHTML = `<option value="">${label}</option>` +
-    [...new Set(values)].sort().map((v) => `<option>${esc(v)}</option>`).join("");
+    sorted.map((v) => `<option>${esc(v)}</option>`).join("");
   $(id).onchange = render;
 }
 fill("f-persona", "All personas", DATA.calls.map((c) => c.persona));
 fill("f-model", "All models", DATA.calls.map((c) => c.model));
 fill("f-prompt", "All prompts", DATA.calls.map((c) => c.prompt));
+fill("f-effort", "All efforts", DATA.calls.map((c) => c.effort), DATA.efforts);
 $("f-pass").onchange = render;
 
 let current = null;
 
 function render() {
-  const fp = $("f-persona").value, fm = $("f-model").value, fr = $("f-prompt").value, fs = $("f-pass").value;
+  const fp = $("f-persona").value, fm = $("f-model").value, fr = $("f-prompt").value, fe = $("f-effort").value, fs = $("f-pass").value;
   const calls = DATA.calls.filter((c) =>
-    (!fp || c.persona === fp) && (!fm || c.model === fm) && (!fr || c.prompt === fr) &&
+    (!fp || c.persona === fp) && (!fm || c.model === fm) && (!fr || c.prompt === fr) && (!fe || c.effort === fe) &&
     (!fs || String(+c.row.passed) === fs));
   $("list").innerHTML = calls.map((c) => `
     <div class="item ${c.id === current ? "active" : ""}" data-id="${esc(c.id)}">
       <div class="t">${esc(c.persona)}</div>
       <div class="s"><span class="badge ${c.row.passed ? "pass" : "fail"}">${c.row.passed ? "PASS" : "FAIL"}</span>
-        ${esc(c.model)} · ${esc(c.prompt)} · ${c.row.weighted_score.toFixed(2)}</div>
+        ${esc(c.model)} · ${esc(c.prompt)} · ${esc(c.effort)} · ${c.row.weighted_score.toFixed(2)}</div>
     </div>`).join("") || `<p class="muted" style="padding:16px">No calls match.</p>`;
   document.querySelectorAll(".item").forEach((el) => (el.onclick = () => show(el.dataset.id)));
 }

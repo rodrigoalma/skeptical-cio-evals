@@ -84,7 +84,9 @@ def run_call(
         "difficulty": persona.get("difficulty"),
         "seller_prompt": seller_prompt,
         "seller_model": seller_model,
+        "seller_effort": seller_effort,
         "buyer_model": buyer_model,
+        "buyer_effort": buyer_effort,
         "turns": turns,
         "ended_by": ended_by,
         # A clipped seller turn is a harness problem, not a bad answer. The

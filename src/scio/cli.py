@@ -25,6 +25,7 @@ from . import loaders, report, runner, smoke
 from .llm import make_llm
 
 RESULTS = loaders.ROOT / "results"
+EFFORTS = loaders.EFFORTS
 LABELS = loaders.ROOT / "labels" / "human_labels.csv"
 
 
@@ -37,12 +38,23 @@ def _check_key(mock: bool) -> None:
         sys.exit("ANTHROPIC_API_KEY is not set. Put it in .env or export it, or try `scio run --mock` to test offline.")
 
 
+def _check_efforts(cfg: dict, roles=("buyer", "judge"), seller: bool = True) -> None:
+    named = {f"effort.{r}": [cfg.get("effort", {}).get(r)] for r in roles}
+    if seller:
+        named["run.seller_efforts"] = cfg["run"].get("seller_efforts") or [None]
+    bad = [f"{k}={v}" for k, vs in named.items() for v in vs if v not in EFFORTS]
+    if bad:
+        sys.exit(f"Missing or unknown effort: {', '.join(bad)}. Use one of: {', '.join(EFFORTS)}")
+
+
 def _apply_overrides(cfg: dict, args) -> dict:
     r = cfg["run"]
     if args.seller_models:
         r["seller_models"] = _csv(args.seller_models)
     if args.seller_prompts:
         r["seller_prompts"] = _csv(args.seller_prompts)
+    if args.seller_efforts:
+        r["seller_efforts"] = _csv(args.seller_efforts)
     if args.personas:
         r["personas"] = args.personas
     if args.trials:
@@ -59,13 +71,14 @@ def _apply_overrides(cfg: dict, args) -> dict:
     bad_prompts = [p for p in r["seller_prompts"] if p not in loaders.seller_prompt_names()]
     if bad_prompts:
         sys.exit(f"No prompts/seller_<name>.md for: {', '.join(bad_prompts)}")
+    _check_efforts(cfg)
     return cfg
 
 
 def _estimate(cfg: dict) -> int:
     r = cfg["run"]
     n_personas = len(loaders.load_personas(r["personas"]))
-    return n_personas * len(r["seller_models"]) * len(r["seller_prompts"]) * r["trials"]
+    return n_personas * len(r["seller_models"]) * len(r["seller_prompts"]) * len(r["seller_efforts"]) * r["trials"]
 
 
 def cmd_run(args) -> None:
@@ -97,6 +110,7 @@ def cmd_grade(args) -> None:
     cfg, mock = _meta_cfg(run_dir)
     if args.judge:
         cfg["roles"]["judge"] = args.judge
+    _check_efforts(cfg, roles=("judge",), seller=False)
     _check_key(mock)
     runner.grade_all(make_llm(mock), cfg, run_dir, force=args.force)
     print(f"Report: {report.build(run_dir, cfg)}")
@@ -121,6 +135,7 @@ def cmd_smoke(args) -> None:
     cfg = loaders.load_config()
     if args.judge:
         cfg["roles"]["judge"] = args.judge
+    _check_efforts(cfg, roles=("judge",), seller=False)
     ok = smoke.run(make_llm(args.mock), cfg)
     sys.exit(0 if ok else 1)
 
@@ -144,6 +159,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("run", help="Simulate, grade and report.")
     p.add_argument("--seller-models", help="Comma list of model names from config.yaml, e.g. haiku,sonnet")
     p.add_argument("--seller-prompts", help="Comma list, e.g. v1,v2")
+    p.add_argument("--seller-efforts", help=f"Comma list of seller effort levels: {','.join(EFFORTS)}")
     p.add_argument("--personas", help="Comma list of persona ids, or 'all'")
     p.add_argument("--trials", type=int, help="Calls per combination")
     p.add_argument("--workers", type=int, help="Calls in parallel")

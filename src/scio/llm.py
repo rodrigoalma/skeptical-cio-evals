@@ -43,6 +43,7 @@ class Usage:
     seconds: float = 0.0
     stop_reason: str = ""
     served_model: str = ""
+    effort: str = ""  # what we sent; empty means the model's API default
 
     def cost(self, pricing: dict[str, list[float]]) -> float:
         rate_in, rate_out = pricing.get(self.model, [0.0, 0.0])
@@ -99,6 +100,7 @@ class AnthropicLLM:
             seconds=round(time.perf_counter() - start, 2),
             stop_reason=resp.stop_reason or "",
             served_model=resp.model,
+            effort=effort or "",
         )
         _check_model(model, resp.model, usage)
         if resp.stop_reason == "refusal":
@@ -154,12 +156,12 @@ class MockLLM:
         if is_buyer and turn >= len(self.BUYER_LINES) - 1:
             text += "\n[END_CALL]"
         in_tokens = (len(system) + sum(len(str(m["content"])) for m in messages)) // 4
-        return text, Usage(model, in_tokens, len(text) // 4, 0.01, "end_turn", model)
+        return text, Usage(model, in_tokens, len(text) // 4, 0.01, "end_turn", model, effort or "")
 
     def structured(self, model, system, prompt, schema, max_tokens=16000, effort=None):
         rng = self._seed(model, prompt)
         data = _fake_from_schema(schema, rng)
-        return data, Usage(model, len(prompt) // 4, 200, 0.01, "end_turn", model)
+        return data, Usage(model, len(prompt) // 4, 200, 0.01, "end_turn", model, effort or "")
 
 
 def _fake_from_schema(schema: dict, rng: random.Random) -> Any:

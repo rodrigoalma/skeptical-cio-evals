@@ -41,6 +41,8 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         "difficulty": call.get("difficulty"),
         "seller_model": call["seller_model_name"],
         "seller_prompt": call["seller_prompt"],
+        # Calls from before effort was recorded can't say what the model defaulted to.
+        "seller_effort": call.get("seller_effort") or "unrecorded",
         "passed": g["passed"],
         "weighted_score": g["weighted_score"],
         **{f"score_{d}": g["judge"]["scores"][d] for d in dims},
@@ -93,11 +95,12 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
         if r["status"] == "ok":
-            groups[(r["seller_model"], r["seller_prompt"])].append(r)
+            groups[(r["seller_model"], r["seller_prompt"], r["seller_effort"])].append(r)
     n_truncated = sum(r["status"] != "ok" for r in rows)
     errors_path = run_dir / "errors.jsonl"
     n_errors = sum(1 for _ in open(errors_path, encoding="utf-8")) if errors_path.exists() else 0
-    configs = sorted(groups)
+    rank = {e: i for i, e in enumerate(loaders.EFFORTS)}
+    configs = sorted(groups, key=lambda k: (k[0], k[1], rank.get(k[2], len(rank))))
 
     lines = [f"# Skeptical CIO eval report: `{run_dir.name}`", ""]
     if meta.get("mock"):
@@ -105,9 +108,11 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
                   "They only show that the pipeline works.", ""]
     buyer = cfg["models"][cfg["roles"]["buyer"]]
     judge = cfg["models"][cfg["roles"]["judge"]]
+    effort = cfg.get("effort") or {}
     lines += [
         f"{len(rows)} graded calls across {len({r['persona'] for r in rows})} personas. "
-        f"Buyer played by `{buyer}`, judged by `{judge}`.",
+        f"Buyer played by `{buyer}` at {effort.get('buyer') or 'default'} effort, "
+        f"judged by `{judge}` at {effort.get('judge') or 'default'} effort.",
         "",
         f"Excluded from scores: {n_truncated} truncated calls. Failed attempts logged in errors.jsonl: {n_errors}.",
         "",
@@ -117,16 +122,16 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
         f"no major unsupported claims, and the weighted rubric score is at least "
         f"{rubric['pass_criteria']['min_weighted_score']}.",
         "",
-        "| Seller model | Prompt | Calls | Pass rate (95% CI) | Score | Concern surfaced | Concern handled "
+        "| Seller model | Prompt | Effort | Calls | Pass rate (95% CI) | Score | Concern surfaced | Concern handled "
         "| Overpromise | Next meeting | Talk ratio | Cost / call | Sec / turn |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for key in configs:
         g = groups[key]
         k = sum(r["passed"] for r in g)
         lo, hi = wilson(k, len(g))
         lines.append(
-            f"| {key[0]} | {key[1]} | {len(g)} | {100 * k / len(g):.0f}% ({100 * lo:.0f}-{100 * hi:.0f}) "
+            f"| {key[0]} | {key[1]} | {key[2]} | {len(g)} | {100 * k / len(g):.0f}% ({100 * lo:.0f}-{100 * hi:.0f}) "
             f"| {_avg(r['weighted_score'] for r in g)} | {_pct(r['concern_surfaced'] for r in g)} "
             f"| {_pct(r['concern_addressed'] for r in g)} | {_pct(r['overpromise'] for r in g)} "
             f"| {_pct(r['next_meeting'] for r in g)} | {_avg(r['talk_ratio'] for r in g)} "
@@ -134,15 +139,15 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
         )
 
     lines += ["", "## Rubric scores (judge, 1 to 5)", "",
-              "| Seller model | Prompt | " + " | ".join(dims) + " |",
-              "|---|---|" + "---|" * len(dims)]
+              "| Seller model | Prompt | Effort | " + " | ".join(dims) + " |",
+              "|---|---|---|" + "---|" * len(dims)]
     for key in configs:
         g = groups[key]
-        lines.append(f"| {key[0]} | {key[1]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |")
+        lines.append(f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |")
 
     personas = sorted({r["persona"] for r in rows})
     lines += ["", "## Pass rate by persona", "",
-              "| Persona | " + " | ".join(f"{m} / {p}" for m, p in configs) + " |",
+              "| Persona | " + " | ".join(f"{m} / {p} / {e}" for m, p, e in configs) + " |",
               "|---|" + "---|" * len(configs)]
     for pid in personas:
         cells = []
@@ -191,12 +196,14 @@ def _write_viewer(run_dir: Path, calls: list[dict], rows: list[dict], dims: list
         "run": run_dir.name,
         "mock": meta.get("mock", False),
         "dims": dims,
+        "efforts": loaders.EFFORTS,
         "calls": [
             {
                 "id": c["id"],
                 "persona": c["persona"],
                 "model": c["seller_model_name"],
                 "prompt": c["seller_prompt"],
+                "effort": by_id[c["id"]]["seller_effort"],
                 "turns": c["turns"],
                 "ended_by": c["ended_by"],
                 "row": by_id[c["id"]],

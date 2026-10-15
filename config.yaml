@@ -12,22 +12,25 @@ roles:
   buyer: sonnet
   judge: opus
 
-# How much each role thinks before answering (low, medium, high, xhigh, max).
-# Leave a role empty to use the model's default. The seller's effort is part
-# of what you're testing, so change it on purpose, not by accident.
+# How much the buyer and judge think before answering (low, medium, high,
+# xhigh, max). Both must be set: each model has its own API default (medium
+# on Haiku 5.5 and Opus 5.5, high on Sonnet 5.5), so leaving one empty would
+# quietly change the effort when you change the model. Seller effort is part
+# of what you're testing, so it lives under `run` as a list.
 effort:
-  seller:
   buyer: low
   judge: high
 
 run:
   seller_models: [haiku, sonnet]
   seller_prompts: [v1, v2]
+  seller_efforts: [medium]   # every seller model runs at each level listed
   personas: all
   trials: 3              # calls per (seller model, prompt, persona) combo
   max_seller_turns: 8
-  # Thinking tokens count toward this limit, so leave headroom. Turn length
-  # is controlled by the prompts, not by cutting the model off.
+  # Thinking tokens count toward this limit, so leave headroom, and raise it
+  # for xhigh or max seller effort. Turn length is controlled by the prompts,
+  # not by cutting the model off.
   max_tokens_per_turn: 4000
   workers: 4             # calls run in parallel
 

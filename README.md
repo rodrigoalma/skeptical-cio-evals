@@ -163,6 +163,34 @@ the model and how much is the instructions.
 Keep the buyer and judge models fixed while you compare sellers. Otherwise
 you're changing two things at once.
 
+## Measuring effort
+
+Effort controls how much a model thinks before it answers (`low`, `medium`,
+`high`, `xhigh`, `max`). Each model has its own default if you don't set it
+(`medium` on Haiku 5.5, `high` on Sonnet 5.5), so this project always sets it
+explicitly. Otherwise a model comparison would quietly be an effort comparison
+too.
+
+Seller effort is a test dimension, like model and prompt. `run.seller_efforts`
+in `config.yaml` lists the levels to run, and every seller model runs at each
+one. The default is `[medium]`. To sweep:
+
+```bash
+uv run scio run --seller-models haiku,sonnet --seller-prompts v2 --seller-efforts low,medium,high
+```
+
+The report gets one row per model, prompt and effort, so you can see whether
+the extra thinking buys a better call and what it costs in the Cost / call
+and Sec / turn columns. Every call file records the effort sent for the
+seller, buyer and judge.
+
+Two things to watch:
+
+- A sweep multiplies the number of calls. Three levels triple the run.
+- Thinking counts toward `max_tokens_per_turn`. At `xhigh` or `max`, raise it
+  so seller turns aren't cut off, since truncated calls are left out of the
+  scores.
+
 ## Using this as a partner
 
 If you're an SI building on Claude, the same setup works for your own use

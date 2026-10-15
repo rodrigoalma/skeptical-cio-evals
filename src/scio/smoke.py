@@ -30,11 +30,11 @@ def run(llm: LLM, cfg: dict, log=print) -> bool:
     personas = loaders.load_personas("all")
     buyer_model = cfg["models"][cfg["roles"]["buyer"]]
     judge_model = cfg["models"][cfg["roles"]["judge"]]
-    judge_effort = cfg.get("effort", {}).get("judge")
+    judge_effort = cfg["effort"]["judge"]
 
     all_ok = True
     errors = 0
-    log(f"Grading {len(load_cases())} known cases with judge {judge_model}...\n")
+    log(f"Grading {len(load_cases())} known cases with judge {judge_model} at {judge_effort} effort...\n")
     for case in load_cases():
         try:
             g = grade_call(case, personas[case["persona"]], llm, buyer_model, judge_model, rubric, judge_effort)

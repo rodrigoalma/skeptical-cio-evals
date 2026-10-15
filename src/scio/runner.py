@@ -25,8 +25,8 @@ from .simulate import run_call
 FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError)
 
 
-def call_id(persona: str, model: str, prompt: str, trial: int) -> str:
-    return f"{persona}__{model}__{prompt}__t{trial}"
+def call_id(persona: str, model: str, prompt: str, effort: str, trial: int) -> str:
+    return f"{persona}__{model}__{prompt}__{effort}__t{trial}"
 
 
 def new_run_dir(base: Path, mock: bool) -> Path:
@@ -55,16 +55,17 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
     for pid, persona in personas.items():
         for m in r["seller_models"]:
             for prompt in r["seller_prompts"]:
-                for trial in range(1, r["trials"] + 1):
-                    cid = call_id(pid, m, prompt, trial)
-                    path = run_dir / "calls" / f"{cid}.json"
-                    if not path.exists():
-                        jobs.append((cid, path, persona, m, prompt))
+                for effort in r["seller_efforts"]:
+                    for trial in range(1, r["trials"] + 1):
+                        cid = call_id(pid, m, prompt, effort, trial)
+                        path = run_dir / "calls" / f"{cid}.json"
+                        if not path.exists():
+                            jobs.append((cid, path, persona, m, prompt, effort))
 
     log(f"Simulating {len(jobs)} calls ({r['workers']} at a time)...")
 
     def work(job):
-        cid, path, persona, m, prompt = job
+        cid, path, persona, m, prompt, effort = job
         call = run_call(
             llm,
             persona,
@@ -73,8 +74,8 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
             buyer_model=buyer_model,
             max_seller_turns=r["max_seller_turns"],
             max_tokens=r["max_tokens_per_turn"],
-            seller_effort=cfg.get("effort", {}).get("seller"),
-            buyer_effort=cfg.get("effort", {}).get("buyer"),
+            seller_effort=effort,
+            buyer_effort=cfg["effort"]["buyer"],
         )
         call["id"] = cid
         call["seller_model_name"] = m
@@ -103,9 +104,10 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
         path, call = job
         call["grade"] = grade_call(
             call, personas[call["persona"]], llm, buyer_model, judge_model, rubric,
-            judge_effort=cfg.get("effort", {}).get("judge"),
+            judge_effort=cfg["effort"]["judge"],
         )
         call["grade"]["judge_model"] = judge_model
+        call["grade"]["judge_effort"] = cfg["effort"]["judge"]
         _save(path, call)
         return call["id"]
 

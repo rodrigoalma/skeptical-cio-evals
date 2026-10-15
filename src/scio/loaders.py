@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 PROMPTS = ROOT / "prompts"
 
+# Effort levels from least to most thinking.
+EFFORTS = ["low", "medium", "high", "xhigh", "max"]
+
 
 def load_yaml(path: Path) -> dict:
     with open(path, encoding="utf-8") as f:
