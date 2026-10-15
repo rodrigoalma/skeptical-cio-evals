@@ -10,7 +10,7 @@ from pathlib import Path
 from statistics import mean
 
 from . import dashboard, loaders
-from .llm import cost_of
+from .llm import cost_of, cost_totals
 from .runner import load_calls
 
 VIEWER_TEMPLATE = Path(__file__).with_name("viewer_template.html")
@@ -164,14 +164,20 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
         for cid, cl in claims[:12]:
             lines.append(f"- **{cid}**: \"{cl['quote']}\" ({cl['issue']})")
 
-    total = defaultdict(float)
-    for c in calls:
-        total["seller"] += cost_of(c["usage"]["seller"], pricing)
-        total["buyer"] += cost_of(c["usage"]["buyer"], pricing)
-        total["grading"] += cost_of(list(c["grade"]["grading_usage"].values()), pricing)
+    run_costs = cost_totals(
+        {
+            "seller": [u for c in calls for u in c["usage"]["seller"]],
+            "buyer": [u for c in calls for u in c["usage"]["buyer"]],
+            "grading": [u for c in calls for u in c["grade"]["grading_usage"].values()],
+        },
+        pricing,
+        cfg.get("cache_write_multipliers"),
+    )
     lines += ["", "## What this run cost", "",
-              f"Seller ${total['seller']:.2f}, buyer ${total['buyer']:.2f}, grading ${total['grading']:.2f}. "
-              f"Total ${sum(total.values()):.2f}.", ""]
+              f"Seller ${run_costs['list_price']['seller']:.2f}, buyer ${run_costs['list_price']['buyer']:.2f}, "
+              f"grading ${run_costs['list_price']['grading']:.2f}. "
+              f"Total ${run_costs['list_price_total']:.2f}.",
+              f"Estimated billed with prompt caching: ${run_costs['estimated_billed_total']:.2f} (estimate).", ""]
 
     cal = run_dir / "calibration.md"
     if cal.exists():

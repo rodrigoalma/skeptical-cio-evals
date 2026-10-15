@@ -9,7 +9,15 @@ import pytest
 from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
-from scio.llm import AccountError, DEFAULT_BACKEND, MockLLM, Usage, cost_of, normalize_pricing
+from scio.llm import (
+    AccountError,
+    DEFAULT_BACKEND,
+    MockLLM,
+    Usage,
+    cost_of,
+    cost_totals,
+    normalize_pricing,
+)
 from scio.simulate import _view, run_call
 
 
@@ -47,6 +55,52 @@ def test_cost_of_owns_usage_cost_calculation_and_normalizes_legacy_pricing():
     assert normalize_pricing(legacy) == {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0}}
     assert cost_of(usages, legacy) == 0.006
     assert Usage(**usages[0]).cost(normalize_pricing(legacy)) == 0.004
+    assert Usage(**{"model": "claude-sonnet-5-5", "input_tokens": 100}).cache_read_tokens == 0
+
+
+def test_list_price_and_estimated_billed_costs_account_for_cached_tokens():
+    prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
+    multipliers = {"5m": 1.25, "1h": 2.0}
+    usage = Usage(
+        model="claude-sonnet-5-5",
+        input_tokens=100,
+        output_tokens=20,
+        cache_read_tokens=30,
+        cache_write_5m_tokens=40,
+        cache_write_1h_tokens=10,
+    )
+    serialized = usage.to_dict()
+
+    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 180
+    assert cost_of([serialized], prices) == 0.00056
+    assert cost_totals({"seller": [serialized]}, prices, multipliers) == {
+        "list_price": {"seller": 0.00056},
+        "list_price_total": 0.00056,
+        "estimated_billed_total": 0.000543,
+    }
+
+
+def test_legacy_pricing_without_cache_read_only_works_for_uncached_usage():
+    legacy_shapes = [
+        {"claude-sonnet-5-5": [2.0, 10.0]},
+        {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0}},
+    ]
+    old_usage = {"model": "claude-sonnet-5-5", "input_tokens": 100, "output_tokens": 20}
+
+    for prices in legacy_shapes:
+        assert "cache_read" not in normalize_pricing(prices)["claude-sonnet-5-5"]
+        assert cost_of([old_usage], prices) == 0.0004
+        assert cost_totals({"seller": [old_usage]}, prices)["estimated_billed_total"] == 0.0004
+
+
+def test_cache_tokens_require_a_cache_read_price():
+    prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0}}
+    usage = Usage(model="claude-sonnet-5-5", cache_write_5m_tokens=1).to_dict()
+
+    with pytest.raises(ValueError, match="cache_read.*claude-sonnet-5-5"):
+        cost_of([usage], prices)
+    with pytest.raises(ValueError, match="cache_read.*claude-sonnet-5-5"):
+        cost_totals({"seller": [usage]}, prices, {"5m": 1.25, "1h": 2.0})
 
 
 def test_usage_cost_rejects_models_without_pricing():
@@ -56,32 +110,48 @@ def test_usage_cost_rejects_models_without_pricing():
         usage.cost(normalize_pricing({}))
 
 
-def test_load_config_normalizes_legacy_pricing_and_rejects_invalid_pricing(tmp_path):
+def test_load_config_validates_cache_pricing_and_multipliers(tmp_path):
     cfg = loaders.load_config()
     current_pricing = cfg["pricing"]
-    cfg["pricing"] = {
-        model: [rates["input"], rates["output"]]
-        for model, rates in current_pricing.items()
-    }
+    assert cfg["cache_write_multipliers"] == {"5m": 1.25, "1h": 2.0}
     path = tmp_path / "config.yaml"
     path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
 
     assert loaders.load_config(path)["pricing"] == current_pricing
 
-    cfg["pricing"]["claude-haiku-5-5"] = {"input": 0.1}
+    cfg["pricing"]["claude-haiku-5-5"] = {"input": 0.1, "cache_read": 0.01}
     path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="claude-haiku-5-5.*missing output"):
         loaders.load_config(path)
 
-    cfg["pricing"]["claude-haiku-5-5"] = {"input": "0.1", "output": 0.5}
+    cfg = loaders.load_config()
+    del cfg["pricing"]["claude-haiku-5-5"]["cache_read"]
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="claude-haiku-5-5.*missing cache_read"):
+        loaders.load_config(path)
+
+    cfg = loaders.load_config()
+    cfg["pricing"]["claude-haiku-5-5"]["input"] = "0.1"
     path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="claude-haiku-5-5.*input price must be"):
         loaders.load_config(path)
 
-    cfg["pricing"] = dict(current_pricing)
+    cfg = loaders.load_config()
     del cfg["pricing"]["claude-haiku-5-5"]
     path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="Missing pricing.*claude-haiku-5-5"):
+        loaders.load_config(path)
+
+    cfg = loaders.load_config()
+    cfg["cache_write_multipliers"] = {"5m": 1.25}
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="cache_write_multipliers is missing 1h"):
+        loaders.load_config(path)
+
+    cfg = loaders.load_config()
+    cfg["cache_write_multipliers"]["5m"] = "1.25"
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="cache_write_multipliers.5m must be"):
         loaders.load_config(path)
 
 
@@ -103,6 +173,12 @@ def test_mock_call_ends_and_records_usage():
     assert call["ended_by"] == "buyer"
     assert call["turns"][0]["speaker"] == "buyer"
     assert len(call["usage"]["seller"]) == sum(t["speaker"] == "seller" for t in call["turns"])
+    assert all(
+        usage[field] == 0
+        for records in call["usage"].values()
+        for usage in records
+        for field in ("cache_read_tokens", "cache_write_5m_tokens", "cache_write_1h_tokens")
+    )
     assert "[END_CALL]" not in json.dumps(call["turns"])
 
 
@@ -150,11 +226,13 @@ def test_full_mock_run(tmp_path):
         model: [rates["input"], rates["output"]]
         for model, rates in cfg["pricing"].items()
     }
+    meta["config"].pop("cache_write_multipliers")
     meta_path.write_text(json.dumps(meta), encoding="utf-8")
 
     path = report.build(run_dir)
     text = path.read_text()
     assert "Mock run" in text and "| haiku | coached | medium |" in text
+    assert "Estimated billed with prompt caching:" in text
     html = (run_dir / "viewer.html").read_text()
     assert "/*__DATA__*/null" not in html
 

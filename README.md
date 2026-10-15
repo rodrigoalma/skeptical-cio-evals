@@ -173,7 +173,10 @@ runs also save the git commit and whether test files had uncommitted changes.
 Pass `--no-git` to skip this; those runs then stay on their own.
 
 Mock runs are left out unless you pass `--include-mock`. Costs use the
-pricing in `config.yaml` for every run, so they compare across runs.
+pricing in `config.yaml` for every run, so they compare across runs. Cost / call
+and dashboard cost columns use uncached list prices; run totals also show an
+estimated billed cost with caching. Seller and buyer turns are cached; judge
+and debrief are not.
 
 ## Checking the judge
 

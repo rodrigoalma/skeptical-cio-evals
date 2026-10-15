@@ -7,7 +7,7 @@ from string import Template
 
 import yaml
 
-from .llm import normalize_pricing
+from .llm import normalize_cache_write_multipliers, normalize_pricing
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
@@ -24,7 +24,10 @@ def load_yaml(path: Path) -> dict:
 
 def load_config(path: Path | None = None) -> dict:
     cfg = load_yaml(path or ROOT / "config.yaml")
-    cfg["pricing"] = normalize_pricing(cfg.get("pricing"), cfg.get("models", {}))
+    cfg["pricing"] = normalize_pricing(cfg.get("pricing"), cfg.get("models", {}), require_cache_read=True)
+    cfg["cache_write_multipliers"] = normalize_cache_write_multipliers(
+        cfg.get("cache_write_multipliers"), required=True
+    )
     return cfg
 
 

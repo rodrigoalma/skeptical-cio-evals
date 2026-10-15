@@ -212,6 +212,85 @@ def test_api_bad_request_maps_only_credit_balance_error(message, maps_to_account
         assert error.value is bad_request
 
 
+def test_anthropic_caches_complete_calls_and_maps_cache_usage():
+    responses = [
+        SimpleNamespace(
+            model="claude-sonnet-5-5-20260101",
+            stop_reason="end_turn",
+            stop_details=None,
+            content=[SimpleNamespace(type="text", text="seller reply")],
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=7,
+                cache_read_input_tokens=3,
+                cache_creation_input_tokens=10,
+                cache_creation=SimpleNamespace(
+                    ephemeral_5m_input_tokens=4,
+                    ephemeral_1h_input_tokens=6,
+                ),
+            ),
+        ),
+        SimpleNamespace(
+            model="claude-sonnet-5-5-20260101",
+            stop_reason="end_turn",
+            stop_details=None,
+            content=[SimpleNamespace(type="text", text='{"score": 4}')],
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=7,
+                cache_read_input_tokens=None,
+                cache_creation_input_tokens=5,
+                cache_creation=None,
+            ),
+        ),
+        SimpleNamespace(
+            model="claude-sonnet-5-5-20260101",
+            stop_reason="end_turn",
+            stop_details=None,
+            content=[SimpleNamespace(type="text", text="uncached reply")],
+            usage=SimpleNamespace(
+                input_tokens=10,
+                output_tokens=7,
+                cache_read_input_tokens=None,
+                cache_creation_input_tokens=None,
+                cache_creation=SimpleNamespace(
+                    ephemeral_5m_input_tokens=None,
+                    ephemeral_1h_input_tokens=None,
+                ),
+            ),
+        ),
+    ]
+    requests = []
+
+    class Messages:
+        def create(self, **kwargs):
+            requests.append(kwargs)
+            return responses.pop(0)
+
+    llm = AnthropicLLM.__new__(AnthropicLLM)
+    llm.client = SimpleNamespace(messages=Messages())
+
+    _, complete_usage = llm.complete("claude-sonnet-5-5", "sys", [])
+    _, structured_usage = llm.structured("claude-sonnet-5-5", "sys", "grade", {})
+    _, empty_cache_usage = llm.complete("claude-sonnet-5-5", "sys", [])
+
+    assert requests[0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in requests[1]
+    assert requests[2]["cache_control"] == {"type": "ephemeral"}
+    assert complete_usage.input_tokens == 10
+    assert complete_usage.cache_read_tokens == 3
+    assert complete_usage.cache_write_5m_tokens == 4
+    assert complete_usage.cache_write_1h_tokens == 6
+    provider_input_total = 10 + 3 + 10
+    assert complete_usage.input_tokens + complete_usage.cache_read_tokens + complete_usage.cache_write_5m_tokens + complete_usage.cache_write_1h_tokens == provider_input_total
+    assert structured_usage.cache_read_tokens == 0
+    assert structured_usage.cache_write_5m_tokens == 5
+    assert structured_usage.cache_write_1h_tokens == 0
+    assert empty_cache_usage.cache_read_tokens == 0
+    assert empty_cache_usage.cache_write_5m_tokens == 0
+    assert empty_cache_usage.cache_write_1h_tokens == 0
+
+
 def test_served_model_mismatch_uses_first_model_usage_entry(monkeypatch):
     response = _response(modelUsage={
         "another-model": {"canonicalModel": "claude-opus-5-5-20260101"},

@@ -65,18 +65,51 @@ class Usage:
     stop_reason: str = ""
     served_model: str = ""
     effort: str = ""  # what we sent; empty means the model's API default
+    cache_read_tokens: int = 0
+    cache_write_5m_tokens: int = 0
+    cache_write_1h_tokens: int = 0
 
     def cost(self, prices: dict[str, dict[str, float]]) -> float:
+        model_prices = self._model_prices(prices)
+        input_tokens = self.input_tokens + self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        return (input_tokens * model_prices["input"] + self.output_tokens * model_prices["output"]) / 1_000_000
+
+    def estimated_billed_cost(self, prices: dict[str, dict[str, float]], multipliers: dict[str, float]) -> float:
+        model_prices = self._model_prices(prices)
+        if self.cache_write_5m_tokens and "5m" not in multipliers:
+            raise ValueError("Missing 5m cache write multiplier")
+        if self.cache_write_1h_tokens and "1h" not in multipliers:
+            raise ValueError("Missing 1h cache write multiplier")
+        cache_read_price = model_prices.get("cache_read", 0.0)
+        billed = self.input_tokens * model_prices["input"] + self.cache_read_tokens * cache_read_price
+        billed += self.cache_write_5m_tokens * model_prices["input"] * multipliers.get("5m", 0.0)
+        billed += self.cache_write_1h_tokens * model_prices["input"] * multipliers.get("1h", 0.0)
+        billed += self.output_tokens * model_prices["output"]
+        return billed / 1_000_000
+
+    def _model_prices(self, prices: dict[str, dict[str, float]]) -> dict[str, float]:
         if self.model not in prices:
             raise ValueError(f"No pricing configured for model {self.model!r}")
         model_prices = prices[self.model]
-        return (self.input_tokens * model_prices["input"] + self.output_tokens * model_prices["output"]) / 1_000_000
+        cache_tokens = self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        if cache_tokens and "cache_read" not in model_prices:
+            raise ValueError(f"Missing cache_read price for model {self.model!r} with cache tokens")
+        return model_prices
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-def normalize_pricing(pricing: dict, models=None) -> dict[str, dict[str, float]]:
+def _is_price(value) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def normalize_pricing(pricing: dict, models=None, require_cache_read: bool = False) -> dict[str, dict[str, float]]:
     """Validate prices and convert legacy [input, output] pairs to named rates."""
     if not isinstance(pricing, dict):
         raise ValueError("Pricing must be a mapping from model IDs to prices")
@@ -95,12 +128,15 @@ def normalize_pricing(pricing: dict, models=None) -> dict[str, dict[str, float]]
             raise ValueError(
                 f"Invalid pricing for model {model!r}: expected a mapping with input and output prices"
             )
-        missing = {"input", "output"} - rates.keys()
+        required_rates = {"input", "output"}
+        if require_cache_read:
+            required_rates.add("cache_read")
+        missing = required_rates - rates.keys()
         if missing:
             names = " and ".join(sorted(missing))
             raise ValueError(f"Invalid pricing for model {model!r}: missing {names} price")
         for name, price in rates.items():
-            if isinstance(price, bool) or not isinstance(price, (int, float)) or not math.isfinite(price) or price < 0:
+            if not _is_price(price):
                 raise ValueError(
                     f"Invalid pricing for model {model!r}: {name} price must be a non-negative number"
                 )
@@ -114,10 +150,56 @@ def normalize_pricing(pricing: dict, models=None) -> dict[str, dict[str, float]]
     return normalized
 
 
+def normalize_cache_write_multipliers(multipliers: dict | None, required: bool = False) -> dict[str, float]:
+    """Validate the global cache write multipliers, allowing old run configs without them."""
+    if multipliers is None:
+        if required:
+            raise ValueError("Missing cache_write_multipliers")
+        return {}
+    if not isinstance(multipliers, dict):
+        raise ValueError("cache_write_multipliers must be a mapping with 5m and 1h rates")
+    if any(not isinstance(ttl, str) for ttl in multipliers):
+        raise ValueError("cache_write_multipliers keys must be 5m and 1h")
+    expected = {"5m", "1h"}
+    missing = expected - multipliers.keys()
+    if missing:
+        names = " and ".join(sorted(missing))
+        raise ValueError(f"cache_write_multipliers is missing {names}")
+    extra = multipliers.keys() - expected
+    if extra:
+        raise ValueError(f"Unknown cache_write_multipliers key(s): {', '.join(sorted(extra))}")
+    for ttl, multiplier in multipliers.items():
+        if not _is_price(multiplier):
+            raise ValueError(f"cache_write_multipliers.{ttl} must be a non-negative number")
+    return dict(multipliers)
+
+
 def cost_of(usages: list[dict], pricing: dict) -> float:
-    """Return the combined API-equivalent cost for usage records."""
+    """Return list-price cost, counting cached input at the uncached input rate."""
     normalized = normalize_pricing(pricing)
     return sum(Usage(**usage).cost(normalized) for usage in usages)
+
+
+def cost_totals(
+    usages_by_category: dict[str, list[dict]], pricing: dict, cache_write_multipliers: dict | None = None
+) -> dict:
+    """Return list-price totals by category and the estimated billed total."""
+    normalized = normalize_pricing(pricing)
+    multipliers = normalize_cache_write_multipliers(cache_write_multipliers)
+    usages = {category: [Usage(**usage) for usage in records] for category, records in usages_by_category.items()}
+    list_price = {
+        category: sum(usage.cost(normalized) for usage in records)
+        for category, records in usages.items()
+    }
+    return {
+        "list_price": list_price,
+        "list_price_total": sum(list_price.values()),
+        "estimated_billed_total": sum(
+            usage.estimated_billed_cost(normalized, multipliers)
+            for records in usages.values()
+            for usage in records
+        ),
+    }
 
 
 class LLM(Protocol):
@@ -146,7 +228,7 @@ class AnthropicLLM:
         # per request so a hung connection can't stall a worker forever.
         self.client = anthropic.Anthropic(max_retries=max_retries, timeout=timeout_s)
 
-    def _call(self, model, system, messages, max_tokens, effort, fmt=None):
+    def _call(self, model, system, messages, max_tokens, effort, fmt=None, cache_control=None):
         import anthropic
 
         output_config: dict = {}
@@ -162,11 +244,20 @@ class AnthropicLLM:
                 messages=messages,
                 max_tokens=max_tokens,
                 **({"output_config": output_config} if output_config else {}),
+                **({"cache_control": cache_control} if cache_control is not None else {}),
             )
         except anthropic.BadRequestError as e:
             if CREDIT_BALANCE_TOO_LOW_MARKER in e.message.lower():
                 raise AccountError("api_credits", e.message) from e
             raise
+        cache_creation = getattr(resp.usage, "cache_creation", None)
+        if cache_creation is None:
+            cache_write_5m_tokens = getattr(resp.usage, "cache_creation_input_tokens", None) or 0
+            cache_write_1h_tokens = 0
+            # Older usage responses expose only total creation tokens; these requests use a 5m TTL.
+        else:
+            cache_write_5m_tokens = getattr(cache_creation, "ephemeral_5m_input_tokens", None) or 0
+            cache_write_1h_tokens = getattr(cache_creation, "ephemeral_1h_input_tokens", None) or 0
         usage = Usage(
             model=model,
             input_tokens=resp.usage.input_tokens,
@@ -175,6 +266,9 @@ class AnthropicLLM:
             stop_reason=resp.stop_reason or "",
             served_model=resp.model,
             effort=effort or "",
+            cache_read_tokens=getattr(resp.usage, "cache_read_input_tokens", None) or 0,
+            cache_write_5m_tokens=cache_write_5m_tokens,
+            cache_write_1h_tokens=cache_write_1h_tokens,
         )
         _check_model(model, resp.model, usage)
         if resp.stop_reason == "refusal":
@@ -185,10 +279,11 @@ class AnthropicLLM:
         return text, usage
 
     def complete(self, model, system, messages, max_tokens=4000, effort=None):
-        return self._call(model, system, messages, max_tokens, effort)
+        return self._call(model, system, messages, max_tokens, effort, cache_control={"type": "ephemeral"})
 
     def structured(self, model, system, prompt, schema, max_tokens=16000, effort=None):
         fmt = {"type": "json_schema", "schema": schema}
+        # Single-shot grading calls do not reuse a prefix, so cache writes would add cost without a later read.
         text, usage = self._call(model, system, [{"role": "user", "content": prompt}], max_tokens, effort, fmt)
         if usage.stop_reason == "max_tokens":
             raise ModelError("truncated", "structured output hit max_tokens", usage)
