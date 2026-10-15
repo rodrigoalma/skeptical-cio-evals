@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 from . import calibrate as cal
 from . import dashboard, loaders, report, runner, smoke
-from .llm import BACKENDS, DEFAULT_BACKEND, ClaudeCodeFatalError, backend_of, make_llm
+from .llm import AccountError, BACKENDS, DEFAULT_BACKEND, backend_of, make_llm
 
 RESULTS = loaders.ROOT / "results"
 EFFORTS = loaders.EFFORTS
@@ -238,8 +238,14 @@ def main(argv: list[str] | None = None) -> None:
     try:
         args.fn(args)
     except runner.FATAL_ERRORS as e:
-        if isinstance(e, ClaudeCodeFatalError):
-            sys.exit(f"Claude CLI stopped the run: {e}")
+        if isinstance(e, AccountError):
+            message = f"The run stopped: {e}"
+            if e.kind == "api_credits":
+                message += (
+                    "\nAdd credits, then resume with `scio run --resume <run dir>`. "
+                    "Alternatively, use `--backend subscription` for a new run."
+                )
+            sys.exit(message)
         detail = e.body.get("error", {}).get("message", e.message) if isinstance(e.body, dict) else e.message
         sys.exit(f"The API rejected the request: {detail}\nCheck ANTHROPIC_API_KEY in .env or your environment.")
 

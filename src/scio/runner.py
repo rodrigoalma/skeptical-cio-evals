@@ -17,12 +17,12 @@ import anthropic
 
 from . import fingerprint, loaders
 from .grade import grade_call
-from .llm import ClaudeCodeFatalError, LLM, backend_of
+from .llm import AccountError, LLM, backend_of
 from .simulate import run_call
 
 
 # Account-level errors: every other call would fail the same way, so stop the run.
-FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError, ClaudeCodeFatalError)
+FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError, AccountError)
 
 
 def call_id(persona: str, model: str, prompt: str, effort: str, trial: int) -> str:

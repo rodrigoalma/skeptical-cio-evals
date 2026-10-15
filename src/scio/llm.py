@@ -38,8 +38,8 @@ class ModelError(RuntimeError):
         self.usage = usage
 
 
-class ClaudeCodeFatalError(RuntimeError):
-    """A Claude CLI account failure that makes every remaining call fail."""
+class AccountError(RuntimeError):
+    """An account-level failure that makes every remaining call fail, so the run stops."""
 
     def __init__(self, kind: str, message: str):
         super().__init__(f"{kind}: {message}")
@@ -48,6 +48,7 @@ class ClaudeCodeFatalError(RuntimeError):
 
 DEFAULT_BACKEND = "api"
 BACKENDS = (DEFAULT_BACKEND, "subscription")
+CREDIT_BALANCE_TOO_LOW_MARKER = "credit balance is too low"
 
 
 def backend_of(cfg: dict) -> str:
@@ -99,19 +100,26 @@ class AnthropicLLM:
         self.client = anthropic.Anthropic(max_retries=max_retries, timeout=timeout_s)
 
     def _call(self, model, system, messages, max_tokens, effort, fmt=None):
+        import anthropic
+
         output_config: dict = {}
         if effort:
             output_config["effort"] = effort
         if fmt:
             output_config["format"] = fmt
         start = time.perf_counter()
-        resp = self.client.messages.create(
-            model=model,
-            system=system,
-            messages=messages,
-            max_tokens=max_tokens,
-            **({"output_config": output_config} if output_config else {}),
-        )
+        try:
+            resp = self.client.messages.create(
+                model=model,
+                system=system,
+                messages=messages,
+                max_tokens=max_tokens,
+                **({"output_config": output_config} if output_config else {}),
+            )
+        except anthropic.BadRequestError as e:
+            if CREDIT_BALANCE_TOO_LOW_MARKER in e.message.lower():
+                raise AccountError("api_credits", e.message) from e
+            raise
         usage = Usage(
             model=model,
             input_tokens=resp.usage.input_tokens,
@@ -170,7 +178,7 @@ def _fatal_cli_error(text: str) -> str | None:
         return "cli_auth"
     if any(term in lowered for term in (
         "usage limit", "rate limit", "rate_limit", "out of extra usage", "limit reached",
-        "credit balance is too low",
+        CREDIT_BALANCE_TOO_LOW_MARKER,
     )):
         return "cli_usage_limit"
     return None
@@ -223,19 +231,19 @@ class ClaudeCodeLLM:
         if completed.returncode != 0:
             fatal_kind = _fatal_cli_error(detail)
             if fatal_kind:
-                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail))
+                raise AccountError(fatal_kind, _error_excerpt(detail))
             raise ModelError("cli_error", _error_excerpt(detail))
         try:
             response = json.loads(output)
         except json.JSONDecodeError as e:
             fatal_kind = _fatal_cli_error(detail)
             if fatal_kind:
-                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail)) from e
+                raise AccountError(fatal_kind, _error_excerpt(detail)) from e
             raise ModelError("cli_error", f"Claude CLI returned invalid JSON: {_error_excerpt(detail)}") from e
         if not isinstance(response, dict):
             fatal_kind = _fatal_cli_error(detail)
             if fatal_kind:
-                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail))
+                raise AccountError(fatal_kind, _error_excerpt(detail))
             raise ModelError("cli_error", "Claude CLI JSON response was not an object")
         if response.get("is_error"):
             status = response.get("api_error_status")
@@ -248,7 +256,7 @@ class ClaudeCodeLLM:
             if not fatal_kind and status in (429, "429"):
                 fatal_kind = "cli_usage_limit"
             if fatal_kind:
-                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(error_text))
+                raise AccountError(fatal_kind, _error_excerpt(error_text))
             raise ModelError("cli_error", _error_excerpt(error_text))
 
         usage_data = response.get("usage") or {}

@@ -9,7 +9,7 @@ import pytest
 from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
-from scio.llm import DEFAULT_BACKEND, MockLLM
+from scio.llm import AccountError, DEFAULT_BACKEND, MockLLM
 from scio.simulate import _view, run_call
 
 
@@ -157,6 +157,16 @@ def test_auth_error_stops_the_run(tmp_path):
     with pytest.raises(anthropic.AuthenticationError):
         runner._parallel(fn, jobs, 1, lambda _: None, tmp_path, "simulate")
     assert len(calls) <= 2
+    assert not (tmp_path / "errors.jsonl").exists()
+
+
+def test_account_error_stops_the_run(tmp_path):
+    def fn(job):
+        raise AccountError("api_credits", "Your credit balance is too low.")
+
+    jobs = [(str(i),) for i in range(10)]
+    with pytest.raises(AccountError):
+        runner._parallel(fn, jobs, 1, lambda _: None, tmp_path, "simulate")
     assert not (tmp_path / "errors.jsonl").exists()
 
 

@@ -4,13 +4,16 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+import anthropic
 import pytest
 
 from scio import cli, fingerprint, loaders, runner
 from scio.llm import (
     BACKENDS,
     DEFAULT_BACKEND,
-    ClaudeCodeFatalError,
+    AccountError,
+    AnthropicLLM,
+    CREDIT_BALANCE_TOO_LOW_MARKER,
     ClaudeCodeLLM,
     ModelError,
     MockLLM,
@@ -174,9 +177,39 @@ def test_cli_failures_and_fatal_account_errors(monkeypatch):
             "scio.llm.subprocess.run",
             _fake_run(_response(is_error=True, result=message)),
         )
-        with pytest.raises(ClaudeCodeFatalError) as error:
+        with pytest.raises(AccountError) as error:
             ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
         assert error.value.kind == kind
+
+
+@pytest.mark.parametrize(
+    "message, maps_to_account_error",
+    [
+        ("Your credit balance is too low to access the Anthropic API.", True),
+        ("The request is invalid.", False),
+    ],
+)
+def test_api_bad_request_maps_only_credit_balance_error(message, maps_to_account_error):
+    response = SimpleNamespace(status_code=400, request=object(), headers={})
+    bad_request = anthropic.BadRequestError(message, response=response, body=None)
+
+    class Messages:
+        def create(self, **kwargs):
+            raise bad_request
+
+    llm = AnthropicLLM.__new__(AnthropicLLM)
+    llm.client = SimpleNamespace(messages=Messages())
+
+    if maps_to_account_error:
+        with pytest.raises(AccountError) as error:
+            llm.complete("claude-sonnet-5-5", "sys", [])
+        assert error.value.kind == "api_credits"
+        assert error.value.__cause__ is bad_request
+        assert CREDIT_BALANCE_TOO_LOW_MARKER in error.value.args[0].lower()
+    else:
+        with pytest.raises(anthropic.BadRequestError) as error:
+            llm.complete("claude-sonnet-5-5", "sys", [])
+        assert error.value is bad_request
 
 
 def test_served_model_mismatch_uses_first_model_usage_entry(monkeypatch):
