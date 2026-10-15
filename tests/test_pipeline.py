@@ -2,6 +2,9 @@
 
 import json
 
+import anthropic
+import pytest
+
 from scio import loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
@@ -136,3 +139,17 @@ def test_structured_schemas_are_strict():
 
     walk(DEBRIEF_SCHEMA)
     walk(judge_schema(loaders.load_rubric()))
+
+
+def test_auth_error_stops_the_run(tmp_path):
+    calls = []
+
+    def fn(job):
+        calls.append(job)
+        # Built without __init__ so the test does not depend on the SDK's HTTP library.
+        raise anthropic.AuthenticationError.__new__(anthropic.AuthenticationError)
+
+    with pytest.raises(anthropic.AuthenticationError):
+        runner._parallel(fn, [("a",), ("b",), ("c",), ("d",)], 1, lambda _: None, tmp_path, "simulate")
+    assert len(calls) == 1
+    assert not (tmp_path / "errors.jsonl").exists()

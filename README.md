@@ -84,11 +84,14 @@ pip install -e ".[dev]"
 scio run --mock
 
 # Real run (needs an Anthropic API key)
-export ANTHROPIC_API_KEY=sk-ant-...
+cp .env.example .env                                # then put your key in .env
 scio smoke                                          # check the grader first
 scio run --personas bank_cio,payer_cto --trials 1   # small pilot, read the transcripts
 scio run                                            # full default run
 ```
+
+You can also `export ANTHROPIC_API_KEY=...` instead of using `.env`. An
+exported key takes precedence over the one in `.env`.
 
 `scio smoke` grades four hand-written calls with known answers (a strong
 discovery call, a feature monologue, a call full of forbidden promises, and an

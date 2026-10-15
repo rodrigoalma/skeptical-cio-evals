@@ -17,6 +17,9 @@ import os
 import sys
 from pathlib import Path
 
+import anthropic
+from dotenv import load_dotenv
+
 from . import calibrate as cal
 from . import loaders, report, runner, smoke
 from .llm import make_llm
@@ -31,7 +34,7 @@ def _csv(s: str) -> list[str]:
 
 def _check_key(mock: bool) -> None:
     if not mock and not os.environ.get("ANTHROPIC_API_KEY"):
-        sys.exit("ANTHROPIC_API_KEY is not set. Export it, or try `scio run --mock` to test offline.")
+        sys.exit("ANTHROPIC_API_KEY is not set. Put it in .env or export it, or try `scio run --mock` to test offline.")
 
 
 def _apply_overrides(cfg: dict, args) -> dict:
@@ -129,6 +132,7 @@ def cmd_personas(args) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    load_dotenv(loaders.ROOT / ".env")  # an exported variable takes precedence
     ap = argparse.ArgumentParser(prog="scio", description="Skeptical CIO: evals for AI solutions architects.")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -176,7 +180,11 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(fn=cmd_personas)
 
     args = ap.parse_args(argv)
-    args.fn(args)
+    try:
+        args.fn(args)
+    except runner.FATAL_ERRORS as e:
+        detail = e.body.get("error", {}).get("message", e.message) if isinstance(e.body, dict) else e.message
+        sys.exit(f"The API rejected the request: {detail}\nCheck ANTHROPIC_API_KEY in .env or your environment.")
 
 
 if __name__ == "__main__":

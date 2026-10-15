@@ -13,10 +13,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
+import anthropic
+
 from . import loaders
 from .grade import grade_call
 from .llm import LLM
 from .simulate import run_call
+
+
+# Account-level errors: every other call would fail the same way, so stop the run.
+FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError)
 
 
 def call_id(persona: str, model: str, prompt: str, trial: int) -> str:
@@ -122,6 +128,9 @@ def _parallel(fn, jobs, workers, log, run_dir: Path, stage: str) -> None:
                 cid = fut.result()
                 done += 1
                 log(f"  [{done + failed}/{len(jobs)}] {cid}")
+            except FATAL_ERRORS:
+                pool.shutdown(cancel_futures=True)
+                raise
             except Exception as e:  # keep going; one bad call shouldn't sink the run
                 failed += 1
                 kind = getattr(e, "kind", None) or ("timeout" if "Timeout" in type(e).__name__ else "harness_error")
