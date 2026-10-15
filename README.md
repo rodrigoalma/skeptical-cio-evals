@@ -347,6 +347,16 @@ human labels, and confidence intervals on everything.
 - [ ] Full Spanish runs for the LATAM persona, and a comparison against English
 - [ ] Buyer-model swap test (does the buyer's model change the ranking?)
 - [ ] More personas from real partner scenarios
+- [ ] [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+  on the API backend. Every turn resends the same system prompt (fact sheet,
+  persona) and a growing transcript, so caching should cut cost and latency.
+  Price cache reads and writes in the report so costs stay comparable.
+- [ ] [Jev](https://docs.typesafe.ai/introduction) from TypeSafe AI as a judge,
+  next to the Opus judge. Jev answers typed questions (yes/no, rubric score,
+  choice) with probabilities instead of generating text. Compare both against
+  the human labels from `scio calibrate` for accuracy, variance, cost and
+  latency. Reference:
+  [jev-as-a-judge](https://github.com/danielgshea/jev-as-a-judge)
 
 ## License
 
