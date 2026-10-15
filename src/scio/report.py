@@ -40,7 +40,7 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         "persona": call["persona"],
         "difficulty": call.get("difficulty"),
         "seller_model": call["seller_model_name"],
-        "seller_prompt": call["seller_prompt"],
+        "seller_prompt": loaders.prompt_name(call["seller_prompt"]),
         # Calls from before effort was recorded can't say what the model defaulted to.
         "seller_effort": call.get("seller_effort") or "unrecorded",
         "passed": g["passed"],
@@ -202,7 +202,7 @@ def _write_viewer(run_dir: Path, calls: list[dict], rows: list[dict], dims: list
                 "id": c["id"],
                 "persona": c["persona"],
                 "model": c["seller_model_name"],
-                "prompt": c["seller_prompt"],
+                "prompt": loaders.prompt_name(c["seller_prompt"]),
                 "effort": by_id[c["id"]]["seller_effort"],
                 "turns": c["turns"],
                 "ended_by": c["ended_by"],

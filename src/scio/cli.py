@@ -53,6 +53,7 @@ def _apply_overrides(cfg: dict, args) -> dict:
         r["seller_models"] = _csv(args.seller_models)
     if args.seller_prompts:
         r["seller_prompts"] = _csv(args.seller_prompts)
+    r["seller_prompts"] = [loaders.prompt_name(p) for p in r["seller_prompts"]]
     if args.seller_efforts:
         r["seller_efforts"] = _csv(args.seller_efforts)
     if args.personas:
@@ -158,7 +159,7 @@ def main(argv: list[str] | None = None) -> None:
 
     p = sub.add_parser("run", help="Simulate, grade and report.")
     p.add_argument("--seller-models", help="Comma list of model names from config.yaml, e.g. haiku,sonnet")
-    p.add_argument("--seller-prompts", help="Comma list, e.g. v1,v2")
+    p.add_argument("--seller-prompts", help="Comma list, e.g. basic,coached")
     p.add_argument("--seller-efforts", help=f"Comma list of seller effort levels: {','.join(EFFORTS)}")
     p.add_argument("--personas", help="Comma list of persona ids, or 'all'")
     p.add_argument("--trials", type=int, help="Calls per combination")

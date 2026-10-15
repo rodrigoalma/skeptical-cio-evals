@@ -142,7 +142,7 @@ poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 Small samples are noisy. For a pass rate, the margin of error is roughly
 `1 / sqrt(calls)`. The default run is 7 personas × 3 trials = 21 calls per
 seller setup, which is about ±22 points. That's enough to see a big gap
-(say v1 at 20% vs v2 at 70%), not a small one. If two setups are within that
+(say basic at 20% vs coached at 70%), not a small one. If two setups are within that
 margin, add trials before drawing conclusions. The report shows a confidence
 interval on every pass rate so this stays visible.
 
@@ -152,13 +152,13 @@ interval on every pass rate so this stays visible.
 |---|---|
 | What the seller knows | `data/fact_sheet.md` |
 | The buyers | `data/personas/*.yaml` |
-| Seller instructions | `prompts/seller_v1.md`, `prompts/seller_v2.md`, or add `seller_v3.md` |
+| Seller instructions | `prompts/seller_basic.md`, `prompts/seller_coached.md`, or add your own `seller_<name>.md` |
 | What "good" means | `rubric.yaml` |
 | Models, effort, trials, pricing | `config.yaml` or command line flags |
 | Known-answer grader checks | `data/smoke/known_cases.yaml` |
 
-`v1` is a deliberately basic prompt ("get them interested"). `v2` is written
-the way I'd coach a new SA: discovery first, short turns, only claim what you
+`basic` is a deliberately simple prompt ("get them interested"). `coached` is
+written the way I'd coach a new SA: discovery first, short turns, only claim what you
 know, close on a next step. Comparing the two shows how much of the result is
 the model and how much is the instructions.
 
@@ -246,7 +246,7 @@ in `config.yaml` lists the levels to run, and every seller model runs at each
 one. The default is `[medium]`. To sweep:
 
 ```bash
-uv run scio run --seller-models haiku,sonnet --seller-prompts v2 --seller-efforts low,medium,high
+uv run scio run --seller-models haiku,sonnet --seller-prompts coached --seller-efforts low,medium,high
 ```
 
 The report gets one row per model, prompt and effort, so you can see whether

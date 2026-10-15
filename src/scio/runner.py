@@ -59,7 +59,10 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
                     for trial in range(1, r["trials"] + 1):
                         cid = call_id(pid, m, prompt, effort, trial)
                         path = run_dir / "calls" / f"{cid}.json"
-                        if not path.exists():
+                        # A run started before the rename saved this call under v1/v2.
+                        old = {v: k for k, v in loaders.LEGACY_PROMPT_NAMES.items()}.get(prompt)
+                        old_path = run_dir / "calls" / f"{call_id(pid, m, old, effort, trial)}.json" if old else None
+                        if not path.exists() and not (old_path and old_path.exists()):
                             jobs.append((cid, path, persona, m, prompt, effort))
 
     log(f"Simulating {len(jobs)} calls ({r['workers']} at a time)...")
