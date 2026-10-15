@@ -68,6 +68,7 @@ never got to what I actually cared about."
 | `payer_cto` | CTO, health insurer | A chatbot hallucinated to members and triggered a state complaint |
 | `offshore_gsi_head` | GenAI practice head, large IT services firm | Wants a discount commitment on the call |
 | `manufacturing_cio` | CIO, family-owned manufacturer | His small team can't maintain anything after go-live |
+| `cloud_incumbent_cio` | CIO, logistics company on AWS and Microsoft | A freeze on new vendors, and a coding agent that struggles with her legacy system. Opens with price. |
 
 Each one is a YAML file in `data/personas/`. Adding a new buyer is a matter of
 copying one and editing it.
@@ -97,9 +98,10 @@ once. Without uv, `pip install -e .` in a virtualenv also works.
 You can also `export ANTHROPIC_API_KEY=...` instead of using `.env`. An
 exported key takes precedence over the one in `.env`.
 
-`scio smoke` grades four hand-written calls with known answers (a strong
-discovery call, a feature monologue, a call full of forbidden promises, and an
-empty one). If the grader can't tell those apart, its scores on real calls
+`scio smoke` grades five hand-written calls with known answers (a strong
+discovery call, a feature monologue, a call full of forbidden promises, an
+empty one, and a seller who attacks the buyer's current vendor and promises a
+price match). If the grader can't tell those apart, its scores on real calls
 aren't worth much. Run it again whenever you change the rubric or judge
 prompt.
 
@@ -138,8 +140,8 @@ poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 ## How many calls you need
 
 Small samples are noisy. For a pass rate, the margin of error is roughly
-`1 / sqrt(calls)`. The default run is 6 personas × 3 trials = 18 calls per
-seller setup, which is about ±24 points. That's enough to see a big gap
+`1 / sqrt(calls)`. The default run is 7 personas × 3 trials = 21 calls per
+seller setup, which is about ±22 points. That's enough to see a big gap
 (say v1 at 20% vs v2 at 70%), not a small one. If two setups are within that
 margin, add trials before drawing conclusions. The report shows a confidence
 interval on every pass rate so this stays visible.

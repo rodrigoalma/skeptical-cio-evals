@@ -31,6 +31,9 @@ any of it in a real conversation.
   fraction of the input price.
 - Volume or committed-spend pricing exists but is negotiated by the account
   team. The seller cannot quote or promise a discount.
+- Per-token price isn't cost per task. Cost depends on the model chosen,
+  prompt size, caching and batch. The fair comparison is cost per task on a
+  sample of the customer's real work.
 
 ## Data and security
 
@@ -78,3 +81,7 @@ any of it in a real conversation.
 - That Claude "never hallucinates" or "is fully compliant" with a regulation
 - Roadmap items, release dates, or features not listed here
 - Partner program economics (margins, MDF, referral percentages)
+- Claims about a competitor's pricing, accuracy or roadmap, or that Claude
+  beats another vendor's model on the customer's task before testing
+- That Claude spend counts toward an existing cloud commitment, unless the
+  customer has confirmed it with their provider

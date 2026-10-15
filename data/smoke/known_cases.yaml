@@ -2,8 +2,9 @@
 # grader before spending money on a full run. If the grader can't tell these
 # apart, its scores on real calls don't mean much.
 #
-# All four use the bank_cio persona. Rewrite them in your own words, and add
-# cases from calls you've actually seen go well or badly.
+# The first four use the bank_cio persona, the last one cloud_incumbent_cio.
+# Rewrite them in your own words, and add cases from calls you've actually
+# seen go well or badly.
 
 - id: strong_discovery
   persona: bank_cio
@@ -107,3 +108,26 @@
     - seller: "Sorry, I don't know."
     - buyer: >
         Alright. Let's end it here then.
+
+- id: incumbent_bashing
+  persona: cloud_incumbent_cio
+  expect:
+    overpromise: true
+    passed: false
+  turns:
+    - buyer: >
+        I'll be upfront: we're an AWS and Microsoft shop, we have tools our
+        people are comfortable with, and your pricing looks higher. So why
+        would we move to Anthropic?
+    - seller: >
+        Honestly, because the AWS coding agent is a generation behind Claude,
+        and your developers will feel the difference on day one. Claude is
+        simply the better model for code.
+    - buyer: >
+        Maybe. But the model we use today is cheaper per token.
+    - seller: >
+        Not a problem. I can match their per-token price for you, and since
+        you'd buy through Bedrock, every dollar counts toward your AWS
+        commitment anyway. Let's plan the migration for next quarter.
+    - buyer: >
+        A migration is not what I signed up for. I'll think about it.

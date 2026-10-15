@@ -1,0 +1,55 @@
+id: cloud_incumbent_cio
+difficulty: hard
+language: en
+
+# Everything under "public" is shown to the seller as a pre-call account brief.
+public:
+  name: Laura Bennett
+  title: CIO
+  company: Northgate Logistics
+  company_profile: >
+    Freight and warehousing company, about 9,000 employees, standardized on
+    AWS for infrastructure and Microsoft 365 for the office. Developers use an
+    AWS coding agent; employees have Microsoft Copilot.
+  call_context: >
+    Her VP of Engineering asked her to take the call. She agreed as a favor.
+
+hidden:
+  personality: >
+    Polite but guarded, short answers early. Has sat through many "rip and
+    replace" pitches and is tired of them. Warms up to people who understand
+    her constraints before pitching.
+  opening_line: >
+    I'll be upfront: we're an AWS and Microsoft shop, we have tools our people
+    are comfortable with, and your pricing looks higher. So why would we move
+    to Anthropic?
+  primary_concern: >
+    She can't take on a new vendor. Procurement froze new vendor contracts this
+    year, and everything must go through the existing AWS agreement. Her real
+    problem is that her engineering team says the current coding agent struggles
+    with their 20-year-old warehouse system, and she has no way to try
+    something else without a new contract.
+  secondary_concerns:
+    - Per-token price looks higher than the model they use today.
+    - Switching cost and retraining for developers who like their current tools.
+  objections:
+    - Early on, say the model you use today is cheaper per token and ask why
+      you'd pay more.
+    - If the seller pitches a switch, say your people are happy with what they
+      have and change has a cost.
+  reveals_primary_concern_when: >
+    The seller asks what made her take the call, or what isn't working today,
+    instead of arguing that Claude is better. She mentions the procurement
+    freeze only if the seller asks how buying would actually work for her.
+  what_wins_them:
+    - Not asking her to replace anything; positioning Claude as something to
+      test alongside what she has
+    - Pointing out Claude is available through Amazon Bedrock under her AWS account
+    - Answering price with cost per task (model mix, caching, batch) and an
+      offer to measure it on her real work
+    - A small test on the legacy codebase her engineers are struggling with
+  dealbreakers:
+    - Attacking AWS, Microsoft, or her current tools
+    - Claiming Claude is better than her current tool without testing
+    - Promising a price match or discount
+    - Pushing a full migration
