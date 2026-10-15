@@ -10,7 +10,7 @@ from pathlib import Path
 from statistics import mean
 
 from . import dashboard, loaders
-from .llm import Usage
+from .llm import cost_of
 from .runner import load_calls
 
 VIEWER_TEMPLATE = Path(__file__).with_name("viewer_template.html")
@@ -26,10 +26,6 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     centre = (p + z * z / (2 * n)) / denom
     half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
     return (max(0.0, centre - half), min(1.0, centre + half))
-
-
-def _cost(usages: list[dict], pricing: dict) -> float:
-    return sum(Usage(**u).cost(pricing) for u in usages)
 
 
 def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
@@ -56,7 +52,7 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         "ended_by": call["ended_by"],
         "status": call.get("status", "ok"),
         **g["metrics"],
-        "seller_cost_usd": round(_cost(seller_usage, pricing), 5),
+        "seller_cost_usd": round(cost_of(seller_usage, pricing), 5),
         "seller_sec_per_turn": round(mean(u["seconds"] for u in seller_usage), 2) if seller_usage else 0,
     }
     return row
@@ -170,9 +166,9 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
 
     total = defaultdict(float)
     for c in calls:
-        total["seller"] += _cost(c["usage"]["seller"], pricing)
-        total["buyer"] += _cost(c["usage"]["buyer"], pricing)
-        total["grading"] += _cost(list(c["grade"]["grading_usage"].values()), pricing)
+        total["seller"] += cost_of(c["usage"]["seller"], pricing)
+        total["buyer"] += cost_of(c["usage"]["buyer"], pricing)
+        total["grading"] += cost_of(list(c["grade"]["grading_usage"].values()), pricing)
     lines += ["", "## What this run cost", "",
               f"Seller ${total['seller']:.2f}, buyer ${total['buyer']:.2f}, grading ${total['grading']:.2f}. "
               f"Total ${sum(total.values()):.2f}.", ""]

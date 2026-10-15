@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import random
 import subprocess
@@ -65,12 +66,58 @@ class Usage:
     served_model: str = ""
     effort: str = ""  # what we sent; empty means the model's API default
 
-    def cost(self, pricing: dict[str, list[float]]) -> float:
-        rate_in, rate_out = pricing.get(self.model, [0.0, 0.0])
-        return (self.input_tokens * rate_in + self.output_tokens * rate_out) / 1_000_000
+    def cost(self, prices: dict[str, dict[str, float]]) -> float:
+        if self.model not in prices:
+            raise ValueError(f"No pricing configured for model {self.model!r}")
+        model_prices = prices[self.model]
+        return (self.input_tokens * model_prices["input"] + self.output_tokens * model_prices["output"]) / 1_000_000
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def normalize_pricing(pricing: dict, models=None) -> dict[str, dict[str, float]]:
+    """Validate prices and convert legacy [input, output] pairs to named rates."""
+    if not isinstance(pricing, dict):
+        raise ValueError("Pricing must be a mapping from model IDs to prices")
+
+    normalized = {}
+    for model, rates in pricing.items():
+        if not isinstance(model, str) or not model:
+            raise ValueError(f"Invalid pricing model ID: {model!r}")
+        if isinstance(rates, (list, tuple)):
+            if len(rates) != 2:
+                raise ValueError(
+                    f"Invalid pricing for model {model!r}: expected input and output prices"
+                )
+            rates = {"input": rates[0], "output": rates[1]}
+        if not isinstance(rates, dict):
+            raise ValueError(
+                f"Invalid pricing for model {model!r}: expected a mapping with input and output prices"
+            )
+        missing = {"input", "output"} - rates.keys()
+        if missing:
+            names = " and ".join(sorted(missing))
+            raise ValueError(f"Invalid pricing for model {model!r}: missing {names} price")
+        for name, price in rates.items():
+            if isinstance(price, bool) or not isinstance(price, (int, float)) or not math.isfinite(price) or price < 0:
+                raise ValueError(
+                    f"Invalid pricing for model {model!r}: {name} price must be a non-negative number"
+                )
+        normalized[model] = dict(rates)
+
+    if models is not None:
+        model_ids = models.values() if isinstance(models, dict) else models
+        for model in model_ids:
+            if model not in normalized:
+                raise ValueError(f"Missing pricing for configured model {model!r}")
+    return normalized
+
+
+def cost_of(usages: list[dict], pricing: dict) -> float:
+    """Return the combined API-equivalent cost for usage records."""
+    normalized = normalize_pricing(pricing)
+    return sum(Usage(**usage).cost(normalized) for usage in usages)
 
 
 class LLM(Protocol):

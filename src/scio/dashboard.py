@@ -13,14 +13,10 @@ from pathlib import Path
 from statistics import mean
 
 from . import fingerprint, loaders
-from .llm import Usage
+from .llm import cost_of
 from .runner import load_calls
 
 TEMPLATE = Path(__file__).with_name("dashboard_template.html")
-
-
-def _cost(usages: list[dict], pricing: dict) -> float:
-    return sum(Usage(**u).cost(pricing) for u in usages)
 
 
 def _row(call: dict, run: str, ver: str, pricing: dict) -> dict:
@@ -41,7 +37,7 @@ def _row(call: dict, run: str, ver: str, pricing: dict) -> dict:
         "surfaced": g["debrief"]["hidden_concern_surfaced"],
         "overpromise": g["judge"]["overpromise"],
         "next_meeting": g["debrief"]["would_take_next_meeting"],
-        "cost": round(_cost(seller, pricing), 6),
+        "cost": round(cost_of(seller, pricing), 6),
         "sec": round(mean(u["seconds"] for u in seller), 2) if seller else 0,
         "claims": [{"quote": c["quote"], "issue": c["issue"]}
                    for c in g["judge"]["unsupported_claims"] if c.get("severity") == "major"],

@@ -38,9 +38,9 @@ run:
   max_tokens_per_turn: 4000
   workers: 4             # calls run in parallel
 
-# USD per million tokens (input, output). Used for the cost columns in the
-# report. Check https://platform.claude.com/docs/en/about-claude/pricing
+# USD per million tokens. Used for the cost columns in the report.
+# Check https://platform.claude.com/docs/en/about-claude/pricing
 pricing:
-  claude-opus-5-5: [4.00, 20.00]
-  claude-sonnet-5-5: [2.00, 10.00]
-  claude-haiku-5-5: [0.10, 0.50]
+  claude-opus-5-5: {input: 4.00, output: 20.00}
+  claude-sonnet-5-5: {input: 2.00, output: 10.00}
+  claude-haiku-5-5: {input: 0.10, output: 0.50}

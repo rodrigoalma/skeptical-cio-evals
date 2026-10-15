@@ -9,7 +9,7 @@ import pytest
 from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
-from scio.llm import AccountError, DEFAULT_BACKEND, MockLLM
+from scio.llm import AccountError, DEFAULT_BACKEND, MockLLM, Usage, cost_of, normalize_pricing
 from scio.simulate import _view, run_call
 
 
@@ -35,6 +35,54 @@ def test_rubric_weights_sum_to_one():
     assert abs(sum(d["weight"] for d in rubric["dimensions"].values()) - 1.0) < 1e-9
     for d in rubric["dimensions"].values():
         assert set(d["anchors"]) == {1, 2, 3, 4, 5}
+
+
+def test_cost_of_owns_usage_cost_calculation_and_normalizes_legacy_pricing():
+    usages = [
+        {"model": "claude-sonnet-5-5", "input_tokens": 1000, "output_tokens": 200},
+        {"model": "claude-sonnet-5-5", "input_tokens": 500, "output_tokens": 100},
+    ]
+    legacy = {"claude-sonnet-5-5": [2.0, 10.0]}
+
+    assert normalize_pricing(legacy) == {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0}}
+    assert cost_of(usages, legacy) == 0.006
+    assert Usage(**usages[0]).cost(normalize_pricing(legacy)) == 0.004
+
+
+def test_usage_cost_rejects_models_without_pricing():
+    usage = Usage(model="claude-unknown-model", input_tokens=100)
+
+    with pytest.raises(ValueError, match="claude-unknown-model"):
+        usage.cost(normalize_pricing({}))
+
+
+def test_load_config_normalizes_legacy_pricing_and_rejects_invalid_pricing(tmp_path):
+    cfg = loaders.load_config()
+    current_pricing = cfg["pricing"]
+    cfg["pricing"] = {
+        model: [rates["input"], rates["output"]]
+        for model, rates in current_pricing.items()
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+
+    assert loaders.load_config(path)["pricing"] == current_pricing
+
+    cfg["pricing"]["claude-haiku-5-5"] = {"input": 0.1}
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="claude-haiku-5-5.*missing output"):
+        loaders.load_config(path)
+
+    cfg["pricing"]["claude-haiku-5-5"] = {"input": "0.1", "output": 0.5}
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="claude-haiku-5-5.*input price must be"):
+        loaders.load_config(path)
+
+    cfg["pricing"] = dict(current_pricing)
+    del cfg["pricing"]["claude-haiku-5-5"]
+    path.write_text(loaders.as_yaml(cfg), encoding="utf-8")
+    with pytest.raises(ValueError, match="Missing pricing.*claude-haiku-5-5"):
+        loaders.load_config(path)
 
 
 def test_message_views_alternate_and_start_with_user():
@@ -96,7 +144,15 @@ def test_full_mock_run(tmp_path):
     calls = runner.load_calls(run_dir)
     assert len(calls) == 4 and all("grade" in c for c in calls)
 
-    path = report.build(run_dir, cfg)
+    meta_path = run_dir / "run.json"
+    meta = json.loads(meta_path.read_text())
+    meta["config"]["pricing"] = {
+        model: [rates["input"], rates["output"]]
+        for model, rates in cfg["pricing"].items()
+    }
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+    path = report.build(run_dir)
     text = path.read_text()
     assert "Mock run" in text and "| haiku | coached | medium |" in text
     html = (run_dir / "viewer.html").read_text()
