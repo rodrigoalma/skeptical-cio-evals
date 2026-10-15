@@ -110,6 +110,7 @@ Each run writes to `results/<timestamp>/`:
 - `report.md` with the headline table, rubric scores, pass rate by persona,
   the worst unsupported claims, and what the run cost
 - `viewer.html`, a page for reading transcripts side by side with the scores
+- `dashboard.html`, the dashboard (see below) for just this run
 - `results.csv` with one row per call for your own analysis
 - `calls/*.json` with every transcript, debrief and grade
 - `errors.jsonl` for attempts that failed (API errors, timeouts, refusals),
@@ -119,7 +120,46 @@ Calls where a seller turn got cut off at the token limit are marked
 `truncated` and left out of the scores, for the same reason.
 
 If a run gets interrupted, `scio run --resume results/<timestamp>` picks up
-where it left off without re-running finished calls.
+where it left off without re-running finished calls. It refuses if the fact
+sheet, a persona, a prompt or the buyer setup changed since the run started,
+because the new calls would be a different test.
+
+## The dashboard
+
+```bash
+scio dashboard            # writes results/dashboard.html from every run
+```
+
+One page across all your runs, with three views:
+
+- **Scorecard**: every seller setup (model, prompt, effort) with its pass rate
+  and 95% interval, rubric scores, how often it found the hidden concern,
+  overpromises, cost per call, cost per passing call and seconds per turn.
+  Click a column to sort.
+- **Persona matrix**: passes (or concerns found) per persona and setup, so you
+  can see where a setup breaks, not just how often.
+- **Head to head**: pick two setups and see whether the better one is worth
+  what it costs, and whether the gap is bigger than the noise.
+
+Calls from different runs are only pooled when they ran on the same **test
+version**. Every run saves a fingerprint in `run.json`: a hash of the fact
+sheet, the personas it used, the rubric, the buyer, judge and debrief prompts,
+the buyer and judge models and effort, and the call length settings. The
+seller model, prompt and effort are left out, since those are what you
+compare. A version picker at the top switches between test versions and says
+which files changed from the one before. Each persona and seller prompt also
+has its own hash, so if you edit `seller_coached.md` the dashboard shows the
+old and new text as two prompts (like `coached·b71c`) instead of mixing them.
+
+Runs from before fingerprints get one from git: the files in the last commit
+before the run started. The dashboard marks those "version from git", and
+flags a run if its calls don't open with the persona's scripted line at that
+commit. A run made with uncommitted edits can't be detected this way, so new
+runs also save the git commit and whether test files had uncommitted changes.
+Pass `--no-git` to skip this; those runs then stay on their own.
+
+Mock runs are left out unless you pass `--include-mock`. Costs use the
+pricing in `config.yaml` for every run, so they compare across runs.
 
 ## Checking the judge
 

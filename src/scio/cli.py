@@ -21,7 +21,7 @@ import anthropic
 from dotenv import load_dotenv
 
 from . import calibrate as cal
-from . import loaders, report, runner, smoke
+from . import dashboard, loaders, report, runner, smoke
 from .llm import make_llm
 
 RESULTS = loaders.ROOT / "results"
@@ -96,7 +96,8 @@ def cmd_run(args) -> None:
         return
     runner.grade_all(llm, cfg, run_dir)
     path = report.build(run_dir, cfg)
-    print(f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}")
+    print(f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
+          "\nRun `scio dashboard` to update the one across all runs.")
 
 
 def _meta_cfg(run_dir: Path) -> tuple[dict, bool]:
@@ -119,6 +120,13 @@ def cmd_grade(args) -> None:
 
 def cmd_report(args) -> None:
     print(f"Report: {report.build(Path(args.run_dir))}")
+
+
+def cmd_dashboard(args) -> None:
+    path = dashboard.build_combined(Path(args.results), include_mock=args.include_mock, use_git=not args.no_git)
+    if not path:
+        sys.exit(f"No graded runs found in {args.results}." + ("" if args.include_mock else " Mock runs are skipped unless you pass --include-mock."))
+    print(f"Dashboard: {path}")
 
 
 def cmd_label(args) -> None:
@@ -180,6 +188,12 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("report", help="Rebuild report.md and viewer.html.")
     p.add_argument("run_dir")
     p.set_defaults(fn=cmd_report)
+
+    p = sub.add_parser("dashboard", help="Build one dashboard across every run in results/.")
+    p.add_argument("--results", default=str(RESULTS), help="Folder holding the runs")
+    p.add_argument("--include-mock", action="store_true", help="Include mock runs")
+    p.add_argument("--no-git", action="store_true", help="Don't use git to work out the version of old runs")
+    p.set_defaults(fn=cmd_dashboard)
 
     p = sub.add_parser("label", help="Hand-grade calls for judge calibration.")
     p.add_argument("run_dir")

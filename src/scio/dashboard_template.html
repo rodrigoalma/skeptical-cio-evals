@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skeptical CIO dashboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* One working column: version and run filters on top, then three tabs (scorecard, persona matrix, head to head). */
+:root {
+  --bg: #f3f4f6; --panel: #ffffff; --ink: #14171c; --ink-2: #4c525c; --muted: #7c838e;
+  --line: #dfe2e7; --grid: #eceef1; --chip: #e9ecf0; --accent: #263552; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --good: #0ca30c; --good-ink: #0b7a0b; --bad: #d03b3b; --warn: #b07a00;
+  --seq-0: #f0f3f8; --seq-1: #cde2fb; --seq-2: #86b6ef; --seq-3: #2a78d6; --seq-ink: #ffffff;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121417; --panel: #1b1e22; --ink: #eef0f2; --ink-2: #b9bec6; --muted: #8b919a;
+  --line: #2e3238; --grid: #262a2f; --chip: #2a2e34; --accent: #c9d5ee; --accent-ink: #121417;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --good-ink: #4fc24f; --bad: #e66767; --warn: #e0a72a;
+  --seq-0: #22262b; --seq-1: #184f95; --seq-2: #2a78d6; --seq-3: #86b6ef; --seq-ink: #121417;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121417; --panel: #1b1e22; --ink: #eef0f2; --ink-2: #b9bec6; --muted: #8b919a;
+  --line: #2e3238; --grid: #262a2f; --chip: #2a2e34; --accent: #c9d5ee; --accent-ink: #121417;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --good-ink: #4fc24f; --bad: #e66767; --warn: #e0a72a;
+  --seq-0: #22262b; --seq-1: #184f95; --seq-2: #2a78d6; --seq-3: #86b6ef; --seq-ink: #121417;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 56px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 26px; line-height: 1.15; }
+h2 { font-size: 19px; }
+h3 { font-size: 15px; }
+p { margin: 0; }
+.sub { color: var(--ink-2); font-size: 14px; }
+.eyebrow { font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.bar { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.bar-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.bar-row > label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+select { font: 500 14px var(--body); padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); max-width: 100%; }
+.meta { font-size: 13px; color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12px/1 var(--mono); padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--chip); color: var(--ink); border-color: var(--chip); }
+.pill { font: 600 11px/1 var(--body); padding: 4px 7px; border-radius: 999px; display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.pill.good { color: var(--good-ink); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.pill.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.pill.info { color: var(--ink-2); background: var(--chip); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px/1.2 var(--body); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.frame { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 18px; min-width: 0; }
+.frame-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; }
+.frame-head p { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { font: 500 13px/1 var(--body); background: transparent; color: var(--ink-2); border: 0; padding: 8px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--chip); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.tablebox { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th button { all: unset; cursor: pointer; }
+th button::after { content: " ↕"; opacity: .4; }
+th button[data-dir="desc"]::after { content: " ↓"; opacity: 1; }
+th button[data-dir="asc"]::after { content: " ↑"; opacity: 1; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.num, th.num { text-align: right; }
+td.num { font-family: var(--mono); }
+.cfg { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+.tag { font: 500 11px/1 var(--mono); padding: 3px 6px; border-radius: 4px; background: var(--chip); color: var(--ink-2); }
+.ci { position: relative; width: 110px; height: 14px; display: inline-block; vertical-align: middle; }
+.ci .track { position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: var(--grid); }
+.ci .range { position: absolute; top: 4px; height: 6px; border-radius: 3px; opacity: .35; }
+.ci .pt { position: absolute; top: 2px; width: 10px; height: 10px; border-radius: 50%; margin-left: -5px; box-shadow: 0 0 0 2px var(--panel); }
+.dims { display: flex; gap: 2px; }
+.dims i { width: 16px; height: 16px; border-radius: 3px; display: inline-block; }
+.heat td.cell { text-align: center; font-family: var(--mono); font-size: 12px; border: 2px solid var(--panel); border-radius: 4px; min-width: 64px; }
+.heat th.col { text-align: center; white-space: normal; min-width: 76px; vertical-align: bottom; }
+.heat th.col .cfg { flex-direction: column; gap: 4px; }
+.heat tfoot td { color: var(--ink-2); font-family: var(--mono); font-size: 12px; text-align: center; border: 0; padding-top: 6px; }
+.heat tfoot td:first-child { text-align: left; font-family: var(--body); color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12px; }
+.split { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; }
+.split > * { min-width: 0; display: grid; gap: 10px; align-content: start; }
+.note { font-size: 12px; color: var(--muted); }
+.claims { display: grid; gap: 10px; }
+.claim { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; }
+.claim .m { color: var(--muted); font: 11px var(--mono); overflow-wrap: anywhere; }
+.claim .why { color: var(--bad); }
+.picker { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.picker label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+.vs { font: 600 13px var(--mono); color: var(--muted); padding-bottom: 8px; }
+.verdict { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; color: var(--ink-2); max-width: 75ch; }
+.verdict strong { color: var(--ink); }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.kpi .l { font-size: 12px; color: var(--muted); }
+.kpi .v { font: 600 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 12px; color: var(--ink-2); }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.lbl { fill: var(--muted); font: 11px var(--mono); }
+.lbl.strong { fill: var(--ink); font: 500 12px var(--body); }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.empty { padding: 40px 0; text-align: center; color: var(--muted); }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <span class="eyebrow" id="scope"></span>
+    <h1>Skeptical CIO dashboard</h1>
+    <p class="sub">Which seller model, prompt and effort runs the best discovery call, and what it costs. Calls are pooled only when they ran on the same version of the test.</p>
+  </header>
+
+  <section class="bar" aria-label="Filters">
+    <div class="bar-row">
+      <label for="version">Test version<select id="version"></select></label>
+      <div class="meta" id="vmeta"></div>
+    </div>
+    <div class="bar-row" id="vflags"></div>
+    <div class="bar-row"><span class="eyebrow">Runs</span><div class="chips" id="runs"></div></div>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" role="tab" data-tab="scorecard">Scorecard</button>
+    <button class="tab" role="tab" data-tab="personas">Persona matrix</button>
+    <button class="tab" role="tab" data-tab="h2h">Head to head</button>
+  </nav>
+
+  <div class="frame empty" id="empty" hidden>No calls selected. Turn on at least one run above.</div>
+
+  <section class="frame" data-panel="scorecard">
+    <div class="frame-head">
+      <div style="display:grid;gap:4px"><h2>Seller setups, ranked</h2>
+        <p>Click a column to sort. Pass rate shows its 95% interval. Rubric cells run discovery → next step, darker is better.</p></div>
+      <div class="legend" id="b-legend"></div>
+    </div>
+    <div class="tablebox"><table id="b-table"></table></div>
+    <div class="split">
+      <div><h3>Rubric by prompt</h3><p class="note">Judge scores 1 to 5, averaged over every model and effort that ran the prompt.</p><div class="tablebox"><table id="b-dims"></table></div></div>
+      <div><h3>Major unsupported claims</h3><div class="claims" id="b-claims"></div></div>
+    </div>
+  </section>
+
+  <section class="frame" data-panel="personas" hidden>
+    <div class="frame-head">
+      <div style="display:grid;gap:4px"><h2>Results per persona</h2>
+        <p>Each cell is calls out of calls run. Setups sorted by overall pass rate, personas from easiest to hardest.</p></div>
+      <div class="seg" role="group" aria-label="Cell metric">
+        <button data-m="pass" aria-pressed="true">Passed</button>
+        <button data-m="surfaced" aria-pressed="false">Concern found</button>
+      </div>
+    </div>
+    <div class="tablebox"><table class="heat" id="c-table"></table></div>
+    <p class="note" id="c-note"></p>
+  </section>
+
+  <section class="frame" data-panel="h2h" hidden>
+    <div class="picker">
+      <label for="d-left">Baseline<select id="d-left"></select></label>
+      <span class="vs">vs</span>
+      <label for="d-right">Challenger<select id="d-right"></select></label>
+    </div>
+    <p class="verdict" id="d-verdict"></p>
+    <div class="split">
+      <div><h3>Quality, 1 to 5</h3><div class="legend" id="d-legend"></div><div class="chart" id="d-dumb"></div></div>
+      <div><h3>What you pay for it</h3><div class="kpis" id="d-cost"></div>
+        <h3 style="margin-top:6px">Persona swings</h3><div class="tablebox"><table id="d-pers"></table></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const DIMLAB = { discovery: "Discovery", objection_handling: "Objections", honesty: "Honesty", business_value: "Business value", listening: "Listening", next_step: "Next step" };
+const EFFSHORT = { medium: "med", unrecorded: "?" };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const pct = x => `${Math.round(x * 100)}%`;
+const usd = x => x === 0 ? "$0" : x < .01 ? `$${x.toFixed(4)}` : x < .1 ? `$${x.toFixed(3)}` : `$${x.toFixed(2)}`;
+const avg = xs => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+function wilson(k, n, z = 1.96) {
+  if (!n) return [0, 0];
+  const p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d;
+  const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+// Model colours follow config.yaml order and never change with filters.
+const MODELS = [...DATA.models];
+for (const r of DATA.rows) if (!MODELS.includes(r.model)) MODELS.push(r.model);
+const col = m => `var(--s${(MODELS.indexOf(m) % 8) + 1})`;
+const effRank = e => { const i = DATA.efforts.indexOf(e); return i < 0 ? 99 : i; };
+
+const state = { version: null, runs: new Set(), sort: { key: "pass", dir: "desc" }, metric: "pass", left: null, right: null, tab: "scorecard" };
+
+/* ---------- aggregation ---------- */
+function selectedRows() {
+  return DATA.rows.filter(r => r.version === state.version && state.runs.has(r.run));
+}
+function setups(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const key = `${r.model}|${r.prompt}|${r.effort}`;
+    if (!by.has(key)) by.set(key, { key, model: r.model, prompt: r.prompt, effort: r.effort, all: [] });
+    by.get(key).all.push(r);
+  }
+  const out = [];
+  for (const s of by.values()) {
+    const g = s.all.filter(r => r.ok);
+    s.truncated = s.all.length - g.length;
+    s.rows = g; s.n = g.length;
+    if (!s.n) continue;
+    s.k = g.filter(r => r.pass).length;
+    s.pass = s.k / s.n; s.ci = wilson(s.k, s.n);
+    s.score = avg(g.map(r => r.score));
+    s.surfaced = avg(g.map(r => r.surfaced ? 1 : 0));
+    s.overpromise = avg(g.map(r => r.overpromise ? 1 : 0));
+    s.next = avg(g.map(r => r.next_meeting ? 1 : 0));
+    s.cost = avg(g.map(r => r.cost));
+    s.sec = avg(g.map(r => r.sec));
+    s.cpp = s.k ? s.cost * s.n / s.k : Infinity;
+    s.dims = Object.fromEntries(DATA.dims.map(d => [d, avg(g.filter(r => d in r.scores).map(r => r.scores[d]))]));
+    s.label = `${s.model}·${s.prompt}·${EFFSHORT[s.effort] || s.effort}`;
+    out.push(s);
+  }
+  return out.sort((a, b) => b.pass - a.pass || b.score - a.score);
+}
+const cfgCell = s => `<span class="cfg"><i class="sw" style="background:${col(s.model)}"></i>${esc(s.model)} <span class="tag">${esc(s.prompt)}</span><span class="tag">${esc(EFFSHORT[s.effort] || s.effort)}</span></span>`;
+const legend = list => [...new Set(list.map(s => s.model))].sort((a, b) => MODELS.indexOf(a) - MODELS.indexOf(b))
+  .map(m => `<span><i class="sw" style="background:${col(m)}"></i>${esc(m)}</span>`).join("");
+
+/* ---------- version + runs bar ---------- */
+const fmtDate = s => s ? s.replace("T", " ").slice(0, 16) : "?";
+function versionLabel(v, i) {
+  const n = DATA.rows.filter(r => r.version === v.id).length;
+  const name = v.id.startsWith("run:") ? `Unversioned · ${v.id.slice(4)}` : `#${i + 1} · ${v.id}`;
+  return `${name} · ${fmtDate(v.last).slice(0, 10)} · ${v.runs.length} run${v.runs.length > 1 ? "s" : ""} · ${n} calls`;
+}
+function renderBar() {
+  const sel = document.getElementById("version");
+  sel.innerHTML = DATA.versions.map((v, i) => `<option value="${esc(v.id)}">${esc(versionLabel(v, i))}</option>`).join("");
+  sel.value = state.version;
+  const v = DATA.versions.find(v => v.id === state.version);
+  const s = v.settings;
+  document.getElementById("vmeta").innerHTML =
+    `Buyer <b>${esc(s.buyer_model)}</b> at ${esc(s.buyer_effort || "default")} effort · judge <b>${esc(s.judge_model)}</b> at ${esc(s.judge_effort || "default")} effort` +
+    (s.max_seller_turns ? ` · up to ${esc(s.max_seller_turns)} seller turns` : "");
+  const runs = DATA.runs.filter(r => v.runs.includes(r.name));
+  const flags = [];
+  if (v.sources.includes("recorded")) flags.push(`<span class="pill good">✓ Recorded at run time</span>`);
+  if (v.sources.includes("git")) flags.push(`<span class="pill info">Version from git</span>`);
+  if (v.sources.includes("unversioned")) flags.push(`<span class="pill warn">! Unversioned: run before fingerprints, not pooled</span>`);
+  if (runs.some(r => r.git && r.git.dirty)) flags.push(`<span class="pill warn">! Uncommitted changes when a run started</span>`);
+  const mism = [...new Set(runs.flatMap(r => r.mismatch || []))];
+  if (mism.length) flags.push(`<span class="pill bad">✕ Opening line differs from git for ${esc(mism.join(", "))}: the version may be wrong</span>`);
+  if (v.changed) flags.push(v.changed.length ? `<span class="meta">Changed since the previous version: <span class="mono">${esc(v.changed.join(", "))}</span></span>`
+    : `<span class="meta">Same files as the previous version, different personas or prompts only.</span>`);
+  if (DATA.runs.some(r => r.mock)) flags.push(`<span class="pill warn">! Includes mock runs: numbers mean nothing</span>`);
+  document.getElementById("vflags").innerHTML = flags.join("");
+  document.getElementById("runs").innerHTML = runs.map(r =>
+    `<button class="chip" data-run="${esc(r.name)}" aria-pressed="${state.runs.has(r.name)}" title="${esc(r.source)}${r.git ? " · " + esc(r.git.commit.slice(0, 7)) : ""}">${esc(r.name)}</button>`).join("");
+  document.querySelectorAll("[data-run]").forEach(b => b.addEventListener("click", () => {
+    const n = b.dataset.run; state.runs.has(n) ? state.runs.delete(n) : state.runs.add(n); renderAll(); }));
+}
+
+/* ---------- scorecard ---------- */
+const COLS = [
+  ["label", "Setup", s => s.label], ["n", "Calls", s => s.n, 1], ["pass", "Pass rate · 95% CI", s => s.pass],
+  ["score", "Score", s => s.score, 1], ["surfaced", "Concern found", s => s.surfaced, 1], ["overpromise", "Overpromise", s => s.overpromise, 1],
+  ["next", "Next meeting", s => s.next, 1], ["cost", "Cost / call", s => s.cost, 1], ["cpp", "Cost / pass", s => s.cpp, 1],
+  ["sec", "Sec / turn", s => s.sec, 1], ["dims", "Rubric", null]];
+const shade = v => v >= 4 ? "var(--seq-3)" : v >= 3.4 ? "var(--seq-2)" : v >= 2.8 ? "var(--seq-1)" : "var(--seq-0)";
+function renderScorecard(list, rows) {
+  document.getElementById("b-legend").innerHTML = legend(list);
+  const c0 = COLS.find(c => c[0] === state.sort.key);
+  const sorted = [...list].sort((a, b) => { const va = c0[2](a), vb = c0[2](b); return (va > vb ? 1 : va < vb ? -1 : 0) * (state.sort.dir === "asc" ? 1 : -1); });
+  const head = COLS.map(([k, l, f, num]) => `<th class="${num ? "num" : ""}">${f ? `<button data-k="${k}" ${state.sort.key === k ? `data-dir="${state.sort.dir}"` : ""}>${l}</button>` : l}</th>`).join("");
+  const body = sorted.map(s => {
+    const ci = `<span class="ci"><span class="track"></span><span class="range" style="left:${s.ci[0] * 100}%;width:${(s.ci[1] - s.ci[0]) * 100}%;background:${col(s.model)}"></span><span class="pt" style="left:${s.pass * 100}%;background:${col(s.model)}"></span></span> <span class="mono">${pct(s.pass)}</span>`;
+    const over = s.overpromise === 0 ? `<span class="pill good">✓ none</span>` : s.overpromise >= .1 ? `<span class="pill bad">✕ ${pct(s.overpromise)}</span>` : `<span class="pill warn">! ${pct(s.overpromise)}</span>`;
+    const dims = `<span class="dims">${DATA.dims.map(d => `<i title="${esc(DIMLAB[d] || d)}: ${s.dims[d].toFixed(1)}" style="background:${shade(s.dims[d])}"></i>`).join("")}</span>`;
+    const trunc = s.truncated ? ` <span class="note" title="Truncated calls are left out of the scores">+${s.truncated} cut off</span>` : "";
+    return `<tr><td>${cfgCell(s)}</td><td class="num">${s.n}${trunc}</td><td>${ci}</td><td class="num">${s.score.toFixed(2)}</td><td class="num">${pct(s.surfaced)}</td><td class="num">${over}</td><td class="num">${pct(s.next)}</td><td class="num">${usd(s.cost)}</td><td class="num">${s.k ? usd(s.cpp) : "no passes"}</td><td class="num">${s.sec.toFixed(1)}s</td><td>${dims}</td></tr>`;
+  }).join("");
+  const t = document.getElementById("b-table");
+  t.innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
+  t.querySelectorAll("th button").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.k; state.sort = { key: k, dir: state.sort.key === k && state.sort.dir === "desc" ? "asc" : "desc" }; renderAll(); }));
+
+  const ok = rows.filter(r => r.ok);
+  const prompts = [...new Set(ok.map(r => r.prompt))].sort();
+  document.getElementById("b-dims").innerHTML = `<thead><tr><th>Prompt</th>${DATA.dims.map(d => `<th class="num">${esc(DIMLAB[d] || d)}</th>`).join("")}<th class="num">Pass</th></tr></thead><tbody>` +
+    prompts.map(p => { const g = ok.filter(r => r.prompt === p);
+      return `<tr><td><span class="tag">${esc(p)}</span></td>${DATA.dims.map(d => { const v = avg(g.filter(r => d in r.scores).map(r => r.scores[d]));
+        return `<td class="num"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${shade(v)}"></span>${v.toFixed(1)}</td>`; }).join("")}<td class="num">${pct(avg(g.map(r => r.pass ? 1 : 0)))}</td></tr>`; }).join("") + `</tbody>`;
+
+  const claims = rows.flatMap(r => r.claims.map(c => ({ ...c, r })));
+  document.getElementById("b-claims").innerHTML = claims.length
+    ? claims.slice(0, 10).map(({ quote, issue, r }) => `<div class="claim"><q>${esc(quote)}</q><span class="m">${esc(r.model)}·${esc(r.prompt)}·${esc(EFFSHORT[r.effort] || r.effort)} · ${esc(r.persona)} · <span class="why">${esc(issue)}</span></span></div>`).join("")
+      + (claims.length > 10 ? `<p class="note">${claims.length - 10} more in the transcript viewer of each run.</p>` : "")
+    : `<p class="note">None in these runs.</p>`;
+}
+
+/* ---------- persona matrix ---------- */
+function renderPersonas(list) {
+  const key = state.metric;
+  const personas = [...new Set(list.flatMap(s => s.rows.map(r => r.persona)))];
+  const rate = p => { const g = list.flatMap(s => s.rows.filter(r => r.persona === p)); return avg(g.map(r => r[key] ? 1 : 0)); };
+  personas.sort((a, b) => rate(b) - rate(a) || a.localeCompare(b));
+  const fill = x => x >= 1 ? "var(--seq-3)" : x >= .5 ? "var(--seq-2)" : x > 0 ? "var(--seq-1)" : "var(--seq-0)";
+  const ink = x => x >= .5 ? "var(--seq-ink)" : "var(--ink)";
+  let h = `<thead><tr><th>Persona</th>${list.map(s => `<th class="col"><span class="cfg"><i class="sw" style="background:${col(s.model)}"></i><span>${esc(s.model)}<br><span class="tag">${esc(s.prompt)}·${esc(EFFSHORT[s.effort] || s.effort)}</span></span></span></th>`).join("")}<th class="num">All</th></tr></thead><tbody>`;
+  for (const p of personas) {
+    h += `<tr><td class="mono">${esc(p)}</td>` + list.map(s => {
+      const g = s.rows.filter(r => r.persona === p);
+      if (!g.length) return `<td class="cell" style="background:transparent;color:var(--muted)">–</td>`;
+      const k = g.filter(r => r[key]).length, x = k / g.length;
+      return `<td class="cell" style="background:${fill(x)};color:${ink(x)}" title="${esc(s.label)} on ${esc(p)}: ${k} of ${g.length}">${k}/${g.length}</td>`;
+    }).join("") + `<td class="num">${pct(rate(p))}</td></tr>`;
+  }
+  h += `</tbody><tfoot><tr><td>Overall</td>${list.map(s => `<td>${pct(key === "pass" ? s.pass : s.surfaced)}</td>`).join("")}<td></td></tr>
+    <tr><td>Cost / call</td>${list.map(s => `<td>${usd(s.cost)}</td>`).join("")}<td></td></tr>
+    <tr><td>Sec / turn</td>${list.map(s => `<td>${s.sec.toFixed(1)}s</td>`).join("")}<td></td></tr></tfoot>`;
+  document.getElementById("c-table").innerHTML = h;
+  document.getElementById("c-note").textContent = key === "pass"
+    ? "A persona that stays pale across every setup is usually a persona or prompt problem, not a model one."
+    : "Where a setup is dark here but pale on Passed, the seller found the concern and then didn't handle it.";
+}
+document.querySelectorAll("[data-m]").forEach(b => b.addEventListener("click", () => {
+  state.metric = b.dataset.m; document.querySelectorAll("[data-m]").forEach(o => o.setAttribute("aria-pressed", o === b)); renderAll(); }));
+
+/* ---------- head to head ---------- */
+function renderH2H(list) {
+  const dl = document.getElementById("d-left"), dr = document.getElementById("d-right");
+  const opts = list.map(s => `<option value="${esc(s.key)}">${esc(s.label)}</option>`).join("");
+  dl.innerHTML = opts; dr.innerHTML = opts;
+  const has = k => list.some(s => s.key === k);
+  if (!has(state.right)) state.right = list[0].key;
+  if (!has(state.left)) state.left = (list.find(s => s.key !== state.right) || list[0]).key;
+  dl.value = state.left; dr.value = state.right;
+  const A = list.find(s => s.key === state.left), B = list.find(s => s.key === state.right);
+  if (A === B) {
+    document.getElementById("d-verdict").textContent = list.length > 1 ? "Pick two different setups to compare." : "Only one setup in this selection. Turn on more runs to compare.";
+  } else {
+    const dp = Math.round((B.pass - A.pass) * 100), costX = A.cost ? B.cost / A.cost : 0;
+    const overlap = !(B.ci[0] > A.ci[1] || A.ci[0] > B.ci[1]);
+    const perPt = dp > 0 ? (B.cost - A.cost) / dp : null;
+    document.getElementById("d-verdict").innerHTML =
+      `<strong>${esc(B.label)}</strong> ${dp === 0 ? "passes as often as" : `passes ${Math.abs(dp)} points ${dp > 0 ? "more" : "less"} often than`} <strong>${esc(A.label)}</strong> and costs ${costX.toFixed(costX < 10 ? 1 : 0)}× as much per call` +
+      (perPt !== null && perPt > 0 ? ` (${usd(perPt)} more per call for each extra point of pass rate).` : ".") +
+      (overlap ? ` The 95% intervals overlap, so <strong>add trials before deciding</strong>.` : ` The intervals don't overlap, so the gap is likely real.`) +
+      ` Based on ${A.n} and ${B.n} calls.`;
+  }
+  const rowsD = [["Pass rate", 1 + A.pass * 4, 1 + B.pass * 4, true], ["Weighted score", A.score, B.score]]
+    .concat(DATA.dims.map(d => [DIMLAB[d] || d, A.dims[d], B.dims[d]]));
+  const W = 460, rh = 32, H = rowsD.length * rh + 28, m = { l: 118, r: 50 };
+  const xs = v => m.l + (v - 1) / 4 * (W - m.l - m.r);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Quality comparison">`;
+  for (const v of [1, 2, 3, 4, 5]) s += `<line class="gridline" x1="${xs(v)}" x2="${xs(v)}" y1="0" y2="${H - 22}"/><text class="lbl" x="${xs(v)}" y="${H - 6}" text-anchor="middle">${v}</text>`;
+  const ca = col(A.model), cb = A.model === B.model ? "var(--ink-2)" : col(B.model);
+  rowsD.forEach(([l, a, b, isPass], i) => { const y = i * rh + 16;
+    s += `<text class="lbl strong" x="${m.l - 10}" y="${y + 4}" text-anchor="end">${esc(l)}</text>`;
+    s += `<line x1="${xs(a)}" x2="${xs(b)}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<circle cx="${xs(a)}" cy="${y}" r="6.5" fill="var(--panel)" stroke="${ca}" stroke-width="2.5"/>`;
+    s += `<circle cx="${xs(b)}" cy="${y}" r="6.5" fill="${cb}" stroke="var(--panel)" stroke-width="2"/>`;
+    const d = b - a; const txt = isPass ? `${d >= 0 ? "+" : ""}${Math.round(d / 4 * 100)}pt` : `${d >= 0 ? "+" : ""}${d.toFixed(1)}`;
+    s += `<text class="lbl" x="${Math.max(xs(a), xs(b)) + 12}" y="${y + 4}">${txt}</text>`; });
+  document.getElementById("d-dumb").innerHTML = s + `</svg><p class="note">Pass rate is drawn on the same 1 to 5 track (0% at 1, 100% at 5).</p>`;
+  document.getElementById("d-legend").innerHTML = `<span><i class="sw" style="border:2.5px solid ${ca}"></i>${esc(A.label)} (baseline)</span><span><i class="sw" style="background:${cb}"></i>${esc(B.label)}</span>`;
+  const mult = (a, b) => a ? b / a : 0;
+  document.getElementById("d-cost").innerHTML = [
+    ["Cost / call", usd(A.cost), usd(B.cost), mult(A.cost, B.cost)],
+    ["Cost / passing call", A.k ? usd(A.cpp) : "no passes", B.k ? usd(B.cpp) : "no passes", A.k && B.k ? mult(A.cpp, B.cpp) : 0],
+    ["Sec / turn", `${A.sec.toFixed(1)}s`, `${B.sec.toFixed(1)}s`, mult(A.sec, B.sec)],
+    ["Calls", A.n, B.n, 0]]
+    .map(([l, a, b, x]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${b}</span><span class="s">vs ${a}${x ? ` · <b style="color:${x > 1.05 ? "var(--bad)" : x < .95 ? "var(--good-ink)" : "var(--ink-2)"}">${x.toFixed(1)}×</b>` : ""}</span></div>`).join("");
+  const personas = [...new Set([...A.rows, ...B.rows].map(r => r.persona))].sort();
+  const cell = (s, p) => { const g = s.rows.filter(r => r.persona === p); return g.length ? [g.filter(r => r.pass).length, g.length] : null; };
+  document.getElementById("d-pers").innerHTML = `<thead><tr><th>Persona</th><th class="num">Baseline</th><th class="num">Challenger</th><th class="num">Change</th></tr></thead><tbody>` +
+    personas.map(p => { const a = cell(A, p), b = cell(B, p);
+      const d = a && b ? b[0] / b[1] - a[0] / a[1] : null;
+      const tag = d === null ? `<span class="note">n/a</span>` : d > 0 ? `<span class="pill good">▲ ${Math.round(d * 100)}pt</span>` : d < 0 ? `<span class="pill bad">▼ ${Math.round(-d * 100)}pt</span>` : `<span class="note">same</span>`;
+      return `<tr><td class="mono">${esc(p)}</td><td class="num">${a ? `${a[0]}/${a[1]}` : "–"}</td><td class="num">${b ? `${b[0]}/${b[1]}` : "–"}</td><td class="num">${tag}</td></tr>`; }).join("") + `</tbody>`;
+}
+document.getElementById("d-left").addEventListener("change", e => { state.left = e.target.value; renderAll(); });
+document.getElementById("d-right").addEventListener("change", e => { state.right = e.target.value; renderAll(); });
+
+/* ---------- wiring ---------- */
+function show(tab) {
+  state.tab = tab;
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.tab === tab));
+  store.set("scio-dash-tab", tab);
+  renderAll();
+}
+function renderAll() {
+  renderBar();
+  const rows = selectedRows(), list = setups(rows);
+  const empty = !list.length;
+  document.getElementById("empty").hidden = !empty;
+  document.querySelectorAll("[data-panel]").forEach(p => p.hidden = empty || p.dataset.panel !== state.tab);
+  if (empty) return;
+  renderScorecard(list, rows); renderPersonas(list); renderH2H(list);
+}
+function pickVersion(id) {
+  state.version = id;
+  state.runs = new Set(DATA.versions.find(v => v.id === id).runs);
+}
+document.getElementById("version").addEventListener("change", e => { pickVersion(e.target.value); renderAll(); });
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => show(t.dataset.tab)));
+
+const latest = DATA.versions[DATA.versions.length - 1];
+pickVersion(latest.id);
+document.getElementById("scope").textContent = `${DATA.title} · ${DATA.runs.length} run${DATA.runs.length > 1 ? "s" : ""} · ${DATA.rows.length} graded calls`;
+const hash = location.hash.slice(1);
+const TABS = ["scorecard", "personas", "h2h"], saved = store.get("scio-dash-tab");
+show(TABS.includes(hash) ? hash : TABS.includes(saved) ? saved : "scorecard");
+</script>
+</body>
+</html>

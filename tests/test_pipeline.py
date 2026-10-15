@@ -6,7 +6,7 @@ import time
 import anthropic
 import pytest
 
-from scio import loaders, report, runner
+from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
 from scio.llm import MockLLM
@@ -235,3 +235,96 @@ def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
     runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)  # resume finds the old call
     assert [c["id"] for c in runner.load_calls(run_dir)] == ["bank_cio__haiku__v2__medium__t1"]
     assert "| haiku | coached | medium |" in report.build(run_dir, cfg).read_text()
+
+
+def _mock_run(tmp_path, name, **run):
+    cfg = loaders.load_config()
+    cfg["run"].update({"personas": "bank_cio", "seller_models": ["haiku"], "seller_prompts": ["coached"],
+                       "seller_efforts": ["medium"], "trials": 1, **run})
+    run_dir = tmp_path / name
+    runner.write_run_meta(cfg, run_dir, mock=True)
+    quiet = lambda *a: None
+    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+    return cfg, run_dir
+
+
+def test_fingerprint_is_recorded_and_changes_with_the_test():
+    cfg = loaders.load_config()
+    fp = fingerprint.record(cfg, ["bank_cio"], ["coached"])
+    assert fp["source"] == "recorded" and set(fp["personas"]) == {"bank_cio"}
+    assert fingerprint.record(cfg, ["bank_cio"], ["coached"])["files"] == fp["files"]
+
+    # Seller choices are what you compare, so they don't change the version.
+    other = fingerprint.record({**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}}, ["bank_cio"], ["basic"])
+    assert fingerprint.differences(fp, other) == []
+
+    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"})
+    assert fingerprint.version(fp, judge) != fingerprint.version(fp, {**judge, "files": {"rubric.yaml": "y"}})
+    edited = {**fp, "files": {**fp["files"], "data/fact_sheet.md": "changed"}}
+    assert fingerprint.differences(fp, edited) == ["data/fact_sheet.md"]
+
+
+def test_resume_refuses_a_run_whose_files_changed(tmp_path):
+    cfg, run_dir = _mock_run(tmp_path, "run")
+    meta = json.loads((run_dir / "run.json").read_text())
+    meta["fingerprint"]["files"]["data/fact_sheet.md"] = "something else"
+    (run_dir / "run.json").write_text(json.dumps(meta))
+    with pytest.raises(SystemExit, match="fact_sheet"):
+        runner.write_run_meta(cfg, run_dir, mock=True)
+
+
+def test_dashboard_pools_runs_on_the_same_version(tmp_path):
+    _mock_run(tmp_path, "a")
+    _mock_run(tmp_path, "b", personas="bank_cio,payer_cto")
+    _, c = _mock_run(tmp_path, "c", max_seller_turns=3)  # a different test
+
+    data = dashboard.collect(sorted(tmp_path.iterdir()), loaders.load_config()["pricing"])
+    by_version = {v["id"]: v["runs"] for v in data["versions"]}
+    assert sorted(by_version.values()) == [["a", "b"], ["c"]]
+    assert data["versions"][-1]["changed"] == ["max_seller_turns"]
+    assert len(data["rows"]) == 4
+
+    path = dashboard.build_combined(tmp_path, include_mock=True)
+    assert "/*__DATA__*/null" not in path.read_text() and not dashboard.build_combined(tmp_path)
+
+
+def test_old_runs_get_their_version_from_git(tmp_path, monkeypatch):
+    _, new = _mock_run(tmp_path, "new")
+    _, old = _mock_run(tmp_path, "old")
+    meta = json.loads((old / "run.json").read_text())
+    del meta["fingerprint"]
+    meta["mock"] = False
+    (old / "run.json").write_text(json.dumps(meta))
+    for p in (old / "calls").glob("*.json"):
+        call = json.loads(p.read_text())
+        del call["grade"]["fingerprint"]
+        call["seller_prompt"] = "v2"
+        p.write_text(json.dumps(call))
+
+    # Pretend git's last commit holds the files as they are on disk, with the
+    # seller prompt under its old name.
+    def fake_git(*args):
+        if args[0] == "log":
+            return "abc123\n"
+        rel = args[1].split(":", 1)[1].replace("seller_v2.md", "seller_coached.md")
+        return (loaders.ROOT / rel).read_text(encoding="utf-8")
+    monkeypatch.setattr(fingerprint, "_git", fake_git)
+
+    data = dashboard.collect([new, old], loaders.load_config()["pricing"])
+    assert len(data["versions"]) == 1 and data["versions"][0]["sources"] == ["recorded", "git"]
+    saved = json.loads((old / "run.json").read_text())["fingerprint"]
+    assert saved["git"]["commit"] == "abc123" and saved["check"]["opening_lines_mismatch"] == []
+    assert {r["prompt"] for r in data["rows"]} == {"coached"}
+
+    # A run whose calls don't open with the persona's line at that commit is flagged.
+    del saved["check"]
+    p = next((old / "calls").glob("*.json"))
+    call = json.loads(p.read_text())
+    call["turns"][0]["text"] = "Something else entirely."
+    p.write_text(json.dumps(call))
+    meta = json.loads((old / "run.json").read_text())
+    del meta["fingerprint"]
+    (old / "run.json").write_text(json.dumps(meta))
+    data = dashboard.collect([old], loaders.load_config()["pricing"])
+    assert data["runs"][0]["mismatch"] == ["bank_cio"]

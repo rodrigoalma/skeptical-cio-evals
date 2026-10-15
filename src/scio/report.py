@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
-from . import loaders
+from . import dashboard, loaders
 from .llm import Usage
 from .runner import load_calls
 
@@ -187,6 +187,7 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
 
     (run_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
     _write_viewer(run_dir, calls, rows, dims, meta)
+    dashboard.write(run_dir / "dashboard.html", [run_dir], pricing, f"Run {run_dir.name}")
     return run_dir / "report.md"
 
 
