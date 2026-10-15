@@ -22,7 +22,7 @@ scio = "scio.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-scio = ["viewer_template.html"]
+scio = ["viewer_template.html", "dashboard_template.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

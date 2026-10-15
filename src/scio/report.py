@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
-from . import loaders
+from . import dashboard, loaders
 from .llm import Usage
 from .runner import load_calls
 
@@ -40,7 +40,7 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         "persona": call["persona"],
         "difficulty": call.get("difficulty"),
         "seller_model": call["seller_model_name"],
-        "seller_prompt": call["seller_prompt"],
+        "seller_prompt": loaders.prompt_name(call["seller_prompt"]),
         # Calls from before effort was recorded can't say what the model defaulted to.
         "seller_effort": call.get("seller_effort") or "unrecorded",
         "passed": g["passed"],
@@ -187,6 +187,7 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
 
     (run_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
     _write_viewer(run_dir, calls, rows, dims, meta)
+    dashboard.write(run_dir / "dashboard.html", [run_dir], pricing, f"Run {run_dir.name}")
     return run_dir / "report.md"
 
 
@@ -202,7 +203,7 @@ def _write_viewer(run_dir: Path, calls: list[dict], rows: list[dict], dims: list
                 "id": c["id"],
                 "persona": c["persona"],
                 "model": c["seller_model_name"],
-                "prompt": c["seller_prompt"],
+                "prompt": loaders.prompt_name(c["seller_prompt"]),
                 "effort": by_id[c["id"]]["seller_effort"],
                 "turns": c["turns"],
                 "ended_by": c["ended_by"],

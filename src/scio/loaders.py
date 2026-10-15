@@ -56,6 +56,15 @@ def seller_prompt_names() -> list[str]:
     return sorted(p.stem.removeprefix("seller_") for p in PROMPTS.glob("seller_*.md"))
 
 
+# The seller prompts used to be called v1 and v2. Runs from before the rename
+# still say that in their call files, so map the old names when reading them.
+LEGACY_PROMPT_NAMES = {"v1": "basic", "v2": "coached"}
+
+
+def prompt_name(name: str) -> str:
+    return LEGACY_PROMPT_NAMES.get(name, name)
+
+
 def as_yaml(obj) -> str:
     return yaml.safe_dump(obj, sort_keys=False, allow_unicode=True, width=100).strip()
 

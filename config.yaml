@@ -23,7 +23,7 @@ effort:
 
 run:
   seller_models: [haiku, sonnet]
-  seller_prompts: [v1, v2]
+  seller_prompts: [basic, coached]
   seller_efforts: [medium]   # every seller model runs at each level listed
   personas: all
   trials: 3              # calls per (seller model, prompt, persona) combo

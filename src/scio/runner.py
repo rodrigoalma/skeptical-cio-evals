@@ -15,7 +15,7 @@ from pathlib import Path
 
 import anthropic
 
-from . import loaders
+from . import fingerprint, loaders
 from .grade import grade_call
 from .llm import LLM
 from .simulate import run_call
@@ -59,7 +59,10 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
                     for trial in range(1, r["trials"] + 1):
                         cid = call_id(pid, m, prompt, effort, trial)
                         path = run_dir / "calls" / f"{cid}.json"
-                        if not path.exists():
+                        # A run started before the rename saved this call under v1/v2.
+                        old = {v: k for k, v in loaders.LEGACY_PROMPT_NAMES.items()}.get(prompt)
+                        old_path = run_dir / "calls" / f"{call_id(pid, m, old, effort, trial)}.json" if old else None
+                        if not path.exists() and not (old_path and old_path.exists()):
                             jobs.append((cid, path, persona, m, prompt, effort))
 
     log(f"Simulating {len(jobs)} calls ({r['workers']} at a time)...")
@@ -99,6 +102,7 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
             jobs.append((path, call))
 
     log(f"Grading {len(jobs)} calls (judge: {judge_model})...")
+    grade_fp = fingerprint.grading(judge_model, cfg["effort"]["judge"], buyer_model, fingerprint.grading_files())
 
     def work(job):
         path, call = job
@@ -108,6 +112,7 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
         )
         call["grade"]["judge_model"] = judge_model
         call["grade"]["judge_effort"] = cfg["effort"]["judge"]
+        call["grade"]["fingerprint"] = grade_fp
         _save(path, call)
         return call["id"]
 
@@ -154,7 +159,21 @@ def _parallel(fn, jobs, workers, log, run_dir: Path, stage: str) -> None:
 
 
 def write_run_meta(cfg: dict, run_dir: Path, mock: bool) -> None:
-    meta = {"created": datetime.now().isoformat(timespec="seconds"), "mock": mock, "config": cfg}
+    fp = fingerprint.record(cfg, loaders.load_personas(cfg["run"]["personas"]), cfg["run"]["seller_prompts"])
     meta_path = run_dir / "run.json"
     if not meta_path.exists():
-        _save(meta_path, meta)
+        _save(meta_path, {"created": datetime.now().isoformat(timespec="seconds"), "mock": mock, "config": cfg,
+                          "fingerprint": fp})
+        return
+    # Resuming. Calls made on different files would be a different test, so
+    # refuse rather than mix them into one run.
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    old = meta.get("fingerprint")
+    if not old:
+        return
+    changed = fingerprint.differences(old, fp)
+    if changed:
+        raise SystemExit(f"Can't resume {run_dir.name}: these changed since it started: {', '.join(changed)}. "
+                         "Start a new run instead.")
+    meta["fingerprint"] = fingerprint.merge(old, fp)
+    _save(meta_path, meta)
