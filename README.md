@@ -163,6 +163,74 @@ the model and how much is the instructions.
 Keep the buyer and judge models fixed while you compare sellers. Otherwise
 you're changing two things at once.
 
+## Writing fact sheets and personas
+
+Product facts go in the fact sheet. Objections like "why are you more
+expensive?" or "we already have a vendor" go in the personas, because they
+are things the buyer says, not things the seller knows.
+
+### The fact sheet: what the seller is allowed to say
+
+`data/fact_sheet.md` is everything the seller knows, and it's also what the
+judge grades honesty against. A claim that isn't on the sheet is unsupported,
+and anything on the "must NOT promise" list is a major overpromise, which
+fails the call. So every fact you add is something the seller can now say
+without being marked down.
+
+- Add only what you'd let a real SA say on a first call, written specifically
+  enough to check. "Better than the competition" gives the judge nothing to
+  grade against.
+- For price objections, give the seller the levers (model mix, batch,
+  caching, "discounts go through the account team") rather than comparisons.
+- Be careful with competitor facts. The seller will repeat them as true, and
+  they go stale. It's usually better to add a rule to the must-NOT list, such
+  as "claims about a competitor's pricing, accuracy, or roadmap". A seller who
+  trashes the other vendor then gets caught as an overpromise.
+
+### Personas: what the buyer pushes back with
+
+Everything under `hidden:` goes to the buyer, the debrief and the judge, and
+never to the seller. You can add your own fields there without touching code:
+
+```yaml
+hidden:
+  # ...
+  objections:
+    - When pricing comes up, say another vendor quoted you about 30% less per
+      token and ask why you'd pay more.
+    - Mention you already have an enterprise agreement with another model
+      vendor and switching has a cost.
+```
+
+Where you put an objection decides how it's graded:
+
+| Put it in | It tests | Graded by |
+|---|---|---|
+| `objections` or `secondary_concerns` | Handling pushback without caving, overclaiming or trashing a competitor | The `objection_handling` and `honesty` rubric scores. Doesn't decide pass or fail on its own. |
+| `primary_concern` of a new persona | Finding the real blocker | Pass or fail, through the debrief: was the concern surfaced and handled? |
+
+An incumbent vendor usually works best as a new persona whose real reason for
+taking the call (a second source, a procurement mandate) only comes out if
+the seller asks why they're talking at all. Fill in
+`reveals_primary_concern_when`, `what_wins_them` and `dealbreakers` (for
+example "attacks the current vendor" or "promises a price match"). A price
+objection fits as an extra objection on personas where cost isn't already
+the main concern. `offshore_gsi_head` shows cost as a primary concern.
+
+### After you change either one
+
+1. Run `uv run pytest`. It checks every persona has the required fields and
+   that the seller never sees the hidden brief.
+2. If you added a new way to fail, add a hand-written case to
+   `data/smoke/known_cases.yaml` (for example a seller promising a price
+   match, with `overpromise: true`) and run `uv run scio smoke` to make sure
+   the judge catches it.
+3. Pilot it with `uv run scio run --personas <id> --trials 1` and read the
+   transcripts. Check the buyer actually raises the objection and doesn't
+   fold too easily.
+4. A changed fact sheet or persona is a different test. Don't compare runs
+   from before and after the change; re-run the setups you want to compare.
+
 ## Measuring effort
 
 Effort controls how much a model thinks before it answers (`low`, `medium`,
