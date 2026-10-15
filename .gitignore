@@ -6,3 +6,4 @@ __pycache__/
 results/
 labels/*.csv
 !labels/example_labels.csv
+.vscode/
