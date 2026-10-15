@@ -1,6 +1,7 @@
 """Offline tests. They use the mock model, so no API key is needed."""
 
 import json
+import time
 
 import anthropic
 import pytest
@@ -146,10 +147,13 @@ def test_auth_error_stops_the_run(tmp_path):
 
     def fn(job):
         calls.append(job)
+        if len(calls) > 1:
+            time.sleep(0.2)  # a call already in flight finishes; queued ones must be cancelled
         # Built without __init__ so the test does not depend on the SDK's HTTP library.
         raise anthropic.AuthenticationError.__new__(anthropic.AuthenticationError)
 
+    jobs = [(str(i),) for i in range(10)]
     with pytest.raises(anthropic.AuthenticationError):
-        runner._parallel(fn, [("a",), ("b",), ("c",), ("d",)], 1, lambda _: None, tmp_path, "simulate")
-    assert len(calls) == 1
+        runner._parallel(fn, jobs, 1, lambda _: None, tmp_path, "simulate")
+    assert len(calls) <= 2
     assert not (tmp_path / "errors.jsonl").exists()
