@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ from dotenv import load_dotenv
 
 from . import calibrate as cal
 from . import dashboard, loaders, report, runner, smoke
-from .llm import make_llm
+from .llm import BACKENDS, DEFAULT_BACKEND, ClaudeCodeFatalError, backend_of, make_llm
 
 RESULTS = loaders.ROOT / "results"
 EFFORTS = loaders.EFFORTS
@@ -33,8 +34,18 @@ def _csv(s: str) -> list[str]:
     return [x.strip() for x in s.split(",") if x.strip()]
 
 
-def _check_key(mock: bool) -> None:
-    if not mock and not os.environ.get("ANTHROPIC_API_KEY"):
+def _check_backend(backend: str) -> None:
+    if backend not in BACKENDS:
+        sys.exit(f"Unknown backend {backend!r}. Use one of: {', '.join(BACKENDS)}")
+
+
+def _check_key(mock: bool, backend: str) -> None:
+    _check_backend(backend)
+    if mock:
+        return
+    if backend == "subscription" and not shutil.which("claude"):
+        sys.exit("The Claude subscription backend needs the `claude` CLI on PATH.")
+    if backend == DEFAULT_BACKEND and not os.environ.get("ANTHROPIC_API_KEY"):
         sys.exit("ANTHROPIC_API_KEY is not set. Put it in .env or export it, or try `scio run --mock` to test offline.")
 
 
@@ -49,6 +60,10 @@ def _check_efforts(cfg: dict, roles=("buyer", "judge"), seller: bool = True) -> 
 
 def _apply_overrides(cfg: dict, args) -> dict:
     r = cfg["run"]
+    cfg["backend"] = backend_of(cfg)
+    if args.backend:
+        cfg["backend"] = args.backend
+    _check_backend(cfg["backend"])
     if args.seller_models:
         r["seller_models"] = _csv(args.seller_models)
     if args.seller_prompts:
@@ -83,14 +98,17 @@ def _estimate(cfg: dict) -> int:
 
 
 def cmd_run(args) -> None:
-    _check_key(args.mock)
-    cfg = _apply_overrides(loaders.load_config(), args)
+    cfg = loaders.load_config()
+    if args.resume and not args.backend:
+        cfg["backend"] = backend_of(_meta_cfg(Path(args.resume))[0])
+    cfg = _apply_overrides(cfg, args)
+    _check_key(args.mock, cfg["backend"])
     run_dir = Path(args.resume) if args.resume else runner.new_run_dir(RESULTS, args.mock)
     run_dir.mkdir(parents=True, exist_ok=True)
     runner.write_run_meta(cfg, run_dir, args.mock)
     print(f"Run folder: {run_dir}")
     print(f"{_estimate(cfg)} calls planned.")
-    llm = make_llm(args.mock)
+    llm = make_llm(args.mock, cfg["backend"])
     runner.simulate_all(llm, cfg, run_dir)
     if args.no_grade:
         return
@@ -110,11 +128,13 @@ def _meta_cfg(run_dir: Path) -> tuple[dict, bool]:
 def cmd_grade(args) -> None:
     run_dir = Path(args.run_dir)
     cfg, mock = _meta_cfg(run_dir)
+    cfg["backend"] = args.backend or backend_of(cfg)
+    _check_backend(cfg["backend"])
     if args.judge:
         cfg["roles"]["judge"] = args.judge
     _check_efforts(cfg, roles=("judge",), seller=False)
-    _check_key(mock)
-    runner.grade_all(make_llm(mock), cfg, run_dir, force=args.force)
+    _check_key(mock, cfg["backend"])
+    runner.grade_all(make_llm(mock, cfg["backend"]), cfg, run_dir, force=args.force)
     print(f"Report: {report.build(run_dir, cfg)}")
 
 
@@ -140,12 +160,13 @@ def cmd_calibrate(args) -> None:
 
 
 def cmd_smoke(args) -> None:
-    _check_key(args.mock)
     cfg = loaders.load_config()
+    cfg["backend"] = args.backend or backend_of(cfg)
+    _check_key(args.mock, cfg["backend"])
     if args.judge:
         cfg["roles"]["judge"] = args.judge
     _check_efforts(cfg, roles=("judge",), seller=False)
-    ok = smoke.run(make_llm(args.mock), cfg)
+    ok = smoke.run(make_llm(args.mock, cfg["backend"]), cfg)
     sys.exit(0 if ok else 1)
 
 
@@ -163,6 +184,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("smoke", help="Check the grader on known good and bad calls.")
     p.add_argument("--judge", help="Model name for the judge")
     p.add_argument("--mock", action="store_true", help="Offline mock model, no API calls")
+    p.add_argument("--backend", choices=BACKENDS, help="Model backend from config.yaml")
     p.set_defaults(fn=cmd_smoke)
 
     p = sub.add_parser("run", help="Simulate, grade and report.")
@@ -175,6 +197,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--judge", help="Model name for the judge")
     p.add_argument("--buyer", help="Model name for the buyer")
     p.add_argument("--mock", action="store_true", help="Offline mock model, no API calls")
+    p.add_argument("--backend", choices=BACKENDS, help="Model backend from config.yaml")
     p.add_argument("--resume", help="Existing run folder to continue")
     p.add_argument("--no-grade", action="store_true", help="Only simulate")
     p.set_defaults(fn=cmd_run)
@@ -183,6 +206,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("run_dir")
     p.add_argument("--force", action="store_true", help="Re-grade calls that already have grades")
     p.add_argument("--judge", help="Override the judge model")
+    p.add_argument("--backend", choices=BACKENDS, help="Override the backend saved with the run")
     p.set_defaults(fn=cmd_grade)
 
     p = sub.add_parser("report", help="Rebuild report.md and viewer.html.")
@@ -214,6 +238,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         args.fn(args)
     except runner.FATAL_ERRORS as e:
+        if isinstance(e, ClaudeCodeFatalError):
+            sys.exit(f"Claude CLI stopped the run: {e}")
         detail = e.body.get("error", {}).get("message", e.message) if isinstance(e.body, dict) else e.message
         sys.exit(f"The API rejected the request: {detail}\nCheck ANTHROPIC_API_KEY in .env or your environment.")
 

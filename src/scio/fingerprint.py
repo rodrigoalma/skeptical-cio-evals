@@ -21,6 +21,7 @@ from typing import Callable
 import yaml
 
 from . import loaders
+from .llm import DEFAULT_BACKEND, backend_of
 
 SIM_FILES = ["data/fact_sheet.md", "prompts/buyer.md"]
 # The judge grades honesty against the fact sheet, so it counts for grading too.
@@ -45,14 +46,18 @@ def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], read: Reade
     """prompt_files maps the prompt's name to its file stem, which differ only
     for runs saved before the basic/coached rename."""
     r = cfg["run"]
+    settings = {
+        "buyer_model": cfg["models"][cfg["roles"]["buyer"]],
+        "buyer_effort": (cfg.get("effort") or {}).get("buyer"),
+        "max_seller_turns": r.get("max_seller_turns"),
+        "max_tokens_per_turn": r.get("max_tokens_per_turn"),
+    }
+    backend = backend_of(cfg)
+    if backend != DEFAULT_BACKEND:
+        settings["backend"] = backend
     return {
         "files": {f: file_hash(read(f)) for f in SIM_FILES},
-        "settings": {
-            "buyer_model": cfg["models"][cfg["roles"]["buyer"]],
-            "buyer_effort": (cfg.get("effort") or {}).get("buyer"),
-            "max_seller_turns": r.get("max_seller_turns"),
-            "max_tokens_per_turn": r.get("max_tokens_per_turn"),
-        },
+        "settings": settings,
         "personas": {p: file_hash(read(f"data/personas/{p}.yaml")) for p in sorted(persona_ids)},
         "seller_prompts": {n: file_hash(read(f"prompts/seller_{stem}.md")) for n, stem in sorted(prompt_files.items())},
     }
@@ -62,9 +67,12 @@ def grading_files(read: Reader = _read_disk) -> dict:
     return {f: file_hash(read(f)) for f in GRADE_FILES}
 
 
-def grading(judge_model: str, judge_effort, buyer_model: str, files: dict) -> dict:
+def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backend: str) -> dict:
     # The buyer model also writes the debrief, so it is part of grading.
-    return {"files": files, "settings": {"judge_model": judge_model, "judge_effort": judge_effort, "debrief_model": buyer_model}}
+    settings = {"judge_model": judge_model, "judge_effort": judge_effort, "debrief_model": buyer_model}
+    if backend != DEFAULT_BACKEND:
+        settings["backend"] = backend
+    return {"files": files, "settings": settings}
 
 
 def version(sim: dict, grade: dict) -> str:
@@ -90,6 +98,9 @@ def differences(old: dict, new: dict) -> list[str]:
     personas and prompts that only one of them used."""
     out = [k for k in old["files"] if old["files"][k] != new["files"].get(k)]
     out += [k for k in old["settings"] if old["settings"][k] != new["settings"].get(k)]
+    if (backend_of(old["settings"]) != backend_of(new["settings"])
+            and "backend" not in out):
+        out.append("backend")
     for group, path in (("personas", "data/personas/{}.yaml"), ("seller_prompts", "prompts/seller_{}.md")):
         out += [path.format(k) for k in old[group] if k in new[group] and old[group][k] != new[group][k]]
     return out
@@ -161,5 +172,5 @@ def call_version(fp: dict, call: dict, cfg: dict) -> str:
         models = cfg["models"]
         grade = grading(g.get("judge_model") or models[cfg["roles"]["judge"]],
                         g.get("judge_effort") or (cfg.get("effort") or {}).get("judge"),
-                        models[cfg["roles"]["buyer"]], fp.get("grading_files") or {})
+                        models[cfg["roles"]["buyer"]], fp.get("grading_files") or {}, backend_of(cfg))
     return version(fp, grade)

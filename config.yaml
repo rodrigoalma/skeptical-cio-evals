@@ -6,6 +6,10 @@ models:
   sonnet: claude-sonnet-5-5
   haiku: claude-haiku-5-5
 
+# api uses ANTHROPIC_API_KEY credits; subscription uses the logged-in `claude` CLI.
+# Costs shown in reports are API-equivalent estimates from pricing.
+backend: api
+
 # Which model plays each role. Keep the buyer and judge fixed while you
 # compare sellers, otherwise you're changing two things at once.
 roles:

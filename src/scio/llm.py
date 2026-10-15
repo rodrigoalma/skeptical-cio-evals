@@ -20,7 +20,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
+import subprocess
+import tempfile
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
@@ -33,6 +36,22 @@ class ModelError(RuntimeError):
         super().__init__(f"{kind}: {message}")
         self.kind = kind
         self.usage = usage
+
+
+class ClaudeCodeFatalError(RuntimeError):
+    """A Claude CLI account failure that makes every remaining call fail."""
+
+    def __init__(self, kind: str, message: str):
+        super().__init__(f"{kind}: {message}")
+        self.kind = kind
+
+
+DEFAULT_BACKEND = "api"
+BACKENDS = (DEFAULT_BACKEND, "subscription")
+
+
+def backend_of(cfg: dict) -> str:
+    return cfg.get("backend", DEFAULT_BACKEND)
 
 
 @dataclass
@@ -124,6 +143,157 @@ class AnthropicLLM:
             raise ModelError("bad_json", str(e), usage) from e
 
 
+def _render_transcript(messages: list[dict]) -> str:
+    lines = [
+        "This is the conversation so far. Reply with only your next turn as the assistant side.",
+        "Do not repeat the transcript or add a speaker label.",
+        "",
+    ]
+    for message in messages:
+        speaker = "Assistant" if message["role"] == "assistant" else "Other party"
+        lines.append(f"{speaker}: {message['content']}")
+    lines.extend(("", "Assistant:"))
+    return "\n".join(lines)
+
+
+def _error_excerpt(text: str) -> str:
+    return " ".join(text.split())[:500] or "Claude CLI returned no error details"
+
+
+def _fatal_cli_error(text: str) -> str | None:
+    lowered = text.lower()
+    if any(term in lowered for term in (
+        "not logged in", "login required", "please log in", "authentication required",
+        "authentication failed", "not authenticated", "please authenticate",
+        "failed to authenticate", "unauthorized", "invalid api key",
+    )):
+        return "cli_auth"
+    if any(term in lowered for term in (
+        "usage limit", "rate limit", "rate_limit", "out of extra usage", "limit reached",
+        "credit balance is too low",
+    )):
+        return "cli_usage_limit"
+    return None
+
+
+class ClaudeCodeLLM:
+    """Run prompts through a logged-in Claude Code CLI subscription."""
+
+    def __init__(self, timeout_s: float = 300.0):
+        self.timeout_s = timeout_s
+
+    def _call(self, model, system, prompt, effort, schema=None):
+        command = ["claude", "-p", "--model", model]
+        if effort is not None:
+            command.extend(("--effort", effort))
+        command.extend((
+            "--system-prompt", system,
+            "--tools", "",
+            "--strict-mcp-config",
+            "--setting-sources", "",
+            "--no-session-persistence",
+            "--output-format", "json",
+        ))
+        if schema is not None:
+            command.extend(("--json-schema", json.dumps(schema, ensure_ascii=False, separators=(",", ":"))))
+        command.append(prompt)
+
+        start = time.perf_counter()
+        # Keep API credentials from overriding Claude Code's subscription login.
+        env = os.environ.copy()
+        env.pop("ANTHROPIC_API_KEY", None)
+        env.pop("ANTHROPIC_AUTH_TOKEN", None)
+        try:
+            with tempfile.TemporaryDirectory(prefix="scio-claude-") as cwd:
+                completed = subprocess.run(
+                    command,
+                    cwd=cwd,
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout_s,
+                    check=False,
+                    env=env,
+                )
+        except subprocess.TimeoutExpired as e:
+            raise ModelError("timeout", f"Claude CLI timed out after {self.timeout_s:g}s") from e
+        elapsed = round(time.perf_counter() - start, 2)
+        output = completed.stdout.strip()
+        detail = "\n".join(part for part in (completed.stderr.strip(), output) if part)
+        if completed.returncode != 0:
+            fatal_kind = _fatal_cli_error(detail)
+            if fatal_kind:
+                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail))
+            raise ModelError("cli_error", _error_excerpt(detail))
+        try:
+            response = json.loads(output)
+        except json.JSONDecodeError as e:
+            fatal_kind = _fatal_cli_error(detail)
+            if fatal_kind:
+                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail)) from e
+            raise ModelError("cli_error", f"Claude CLI returned invalid JSON: {_error_excerpt(detail)}") from e
+        if not isinstance(response, dict):
+            fatal_kind = _fatal_cli_error(detail)
+            if fatal_kind:
+                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(detail))
+            raise ModelError("cli_error", "Claude CLI JSON response was not an object")
+        if response.get("is_error"):
+            status = response.get("api_error_status")
+            error_text = "\n".join(filter(None, (
+                str(response.get("subtype", "")), str(status or ""), str(response.get("result", "")), detail,
+            )))
+            fatal_kind = _fatal_cli_error(error_text)
+            if not fatal_kind and status in (401, 403, "401", "403"):
+                fatal_kind = "cli_auth"
+            if not fatal_kind and status in (429, "429"):
+                fatal_kind = "cli_usage_limit"
+            if fatal_kind:
+                raise ClaudeCodeFatalError(fatal_kind, _error_excerpt(error_text))
+            raise ModelError("cli_error", _error_excerpt(error_text))
+
+        usage_data = response.get("usage") or {}
+        model_usage = response.get("modelUsage") or {}
+        model_entry = model_usage.get(model)
+        if model_entry is None and model_usage:
+            model_entry = next(iter(model_usage.values()))
+        served_model = (model_entry or {}).get("canonicalModel", "")
+        usage = Usage(
+            model=model,
+            input_tokens=(usage_data.get("input_tokens", 0)
+                          + usage_data.get("cache_creation_input_tokens", 0)
+                          + usage_data.get("cache_read_input_tokens", 0)),
+            output_tokens=usage_data.get("output_tokens", 0),
+            seconds=elapsed,
+            stop_reason=response.get("stop_reason") or "",
+            served_model=served_model,
+            effort=effort or "",
+        )
+        _check_model(model, served_model, usage)
+        if usage.stop_reason == "refusal":
+            raise ModelError("refusal", "the model declined this request", usage)
+        return response, usage
+
+    # Claude Code does not expose a max_tokens option for either call type.
+    def complete(self, model, system, messages, max_tokens=4000, effort=None):
+        response, usage = self._call(model, system, _render_transcript(messages), effort)
+        return str(response.get("result", "")).strip(), usage
+
+    def structured(self, model, system, prompt, schema, max_tokens=16000, effort=None):
+        response, usage = self._call(model, system, prompt, effort, schema)
+        if usage.stop_reason == "max_tokens":
+            raise ModelError("truncated", "structured output hit max_tokens", usage)
+        usage.stop_reason = "end_turn" if usage.stop_reason == "tool_use" else usage.stop_reason
+        result = response.get("structured_output")
+        if result is None:
+            try:
+                result = json.loads(response.get("result", ""))
+            except (json.JSONDecodeError, TypeError) as e:
+                raise ModelError("bad_json", str(e), usage) from e
+        if not isinstance(result, dict):
+            raise ModelError("bad_json", "structured output was not a JSON object", usage)
+        return result, usage
+
+
 class MockLLM:
     """Offline stand-in for testing the pipeline without spending credits.
 
@@ -179,5 +349,9 @@ def _fake_from_schema(schema: dict, rng: random.Random) -> Any:
     return "mock"
 
 
-def make_llm(mock: bool) -> LLM:
-    return MockLLM() if mock else AnthropicLLM()
+def make_llm(mock: bool, backend: str) -> LLM:
+    if backend not in BACKENDS:
+        raise ValueError(f"Unknown backend {backend!r}. Use one of: {', '.join(BACKENDS)}")
+    if mock:
+        return MockLLM()
+    return AnthropicLLM() if backend == DEFAULT_BACKEND else ClaudeCodeLLM()

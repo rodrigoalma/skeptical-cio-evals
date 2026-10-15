@@ -9,7 +9,7 @@ import pytest
 from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
-from scio.llm import MockLLM
+from scio.llm import DEFAULT_BACKEND, MockLLM
 from scio.simulate import _view, run_call
 
 
@@ -259,7 +259,7 @@ def test_fingerprint_is_recorded_and_changes_with_the_test():
     other = fingerprint.record({**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}}, ["bank_cio"], ["basic"])
     assert fingerprint.differences(fp, other) == []
 
-    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"})
+    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND)
     assert fingerprint.version(fp, judge) != fingerprint.version(fp, {**judge, "files": {"rubric.yaml": "y"}})
     edited = {**fp, "files": {**fp["files"], "data/fact_sheet.md": "changed"}}
     assert fingerprint.differences(fp, edited) == ["data/fact_sheet.md"]

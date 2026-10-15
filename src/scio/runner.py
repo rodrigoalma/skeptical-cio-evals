@@ -17,12 +17,12 @@ import anthropic
 
 from . import fingerprint, loaders
 from .grade import grade_call
-from .llm import LLM
+from .llm import ClaudeCodeFatalError, LLM, backend_of
 from .simulate import run_call
 
 
 # Account-level errors: every other call would fail the same way, so stop the run.
-FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError)
+FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError, ClaudeCodeFatalError)
 
 
 def call_id(persona: str, model: str, prompt: str, effort: str, trial: int) -> str:
@@ -102,7 +102,8 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
             jobs.append((path, call))
 
     log(f"Grading {len(jobs)} calls (judge: {judge_model})...")
-    grade_fp = fingerprint.grading(judge_model, cfg["effort"]["judge"], buyer_model, fingerprint.grading_files())
+    grade_fp = fingerprint.grading(judge_model, cfg["effort"]["judge"], buyer_model, fingerprint.grading_files(),
+                                   backend_of(cfg))
 
     def work(job):
         path, call = job

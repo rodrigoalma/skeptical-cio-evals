@@ -124,6 +124,20 @@ where it left off without re-running finished calls. It refuses if the fact
 sheet, a persona, a prompt or the buyer setup changed since the run started,
 because the new calls would be a different test.
 
+## Running on a Claude subscription
+
+Set `backend: subscription` in `config.yaml`, or pass
+`--backend subscription` to `scio run`, `scio grade` or `scio smoke`. This uses
+the logged-in `claude` CLI and your plan's usage limits. If a run stops on a
+limit, continue it with `scio run --resume results/<timestamp>`.
+
+Each turn's transcript is sent as one message because the CLI does not accept
+message history. Subscription runs are a separate test version and are not
+pooled with API runs. Reports still show API-equivalent costs from `pricing`,
+not your actual subscription spend. Claude Code adds a small neutral
+environment block of about 500 tokens, and `max_tokens_per_turn` is not
+enforced by the CLI. This option is for personal use only.
+
 ## The dashboard
 
 ```bash
