@@ -10,7 +10,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Rodrigo Alcaraz" }]
-dependencies = ["anthropic>=0.40", "python-dotenv>=1", "pyyaml>=6"]
+dependencies = [
+    "anthropic>=0.40",
+    "python-dotenv>=1",
+    "pyyaml>=6",
+    "typesafe-sdk>=0.7.5",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]

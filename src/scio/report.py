@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
-from . import dashboard, loaders
+from . import dashboard, jev, loaders
 from .llm import cost_of, cost_totals
 from .runner import load_calls
 
@@ -140,6 +140,20 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
     for key in configs:
         g = groups[key]
         lines.append(f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |")
+
+    jev_summary = jev.comparison(calls, dims)
+    if jev_summary:
+        lines += ["", "## Jev shadow judge", "",
+                  "| Dimension | Opus mean | Jev mean |",
+                  "|---|---:|---:|"]
+        for dimension, means in jev_summary["dimensions"].items():
+            lines.append(f"| {dimension} | {means['opus_mean']:.2f} | {means['jev_mean']:.2f} |")
+        lines += ["",
+                  f"Weighted scores within 1 point: {jev_summary['weighted_within_one']:.0%} of calls. "
+                  f"Pass agreement: {jev_summary['pass_agreement']:.0%}.",
+                  f"Mean Jev time: {jev_summary['mean_seconds']:.2f} seconds per call. "
+                  f"Usage: {jev_summary['input_tokens']:,} input + {jev_summary['output_tokens']:,} output "
+                  f"tokens ({jev_summary['total_tokens']:,} total).", ""]
 
     personas = sorted({r["persona"] for r in rows})
     lines += ["", "## Pass rate by persona", "",

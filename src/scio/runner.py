@@ -15,7 +15,7 @@ from pathlib import Path
 
 import anthropic
 
-from . import fingerprint, loaders
+from . import fingerprint, jev, loaders
 from .grade import grade_call
 from .llm import AccountError, LLM, backend_of
 from .simulate import run_call
@@ -118,6 +118,26 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
         return call["id"]
 
     _parallel(work, jobs, cfg["run"]["workers"], log, run_dir, "grade")
+
+
+def jev_all(cfg: dict, run_dir: Path, force: bool = False, log=print) -> None:
+    rubric = loaders.load_rubric()
+    personas = loaders.load_personas("all")
+    jobs = []
+    for path in sorted((run_dir / "calls").glob("*.json")):
+        call = json.loads(path.read_text(encoding="utf-8"))
+        if "grade" in call and (force or "jev" not in call):
+            jobs.append((path, call))
+
+    log(f"Jev shadow grading {len(jobs)} calls...")
+
+    def work(job):
+        path, call = job
+        call["jev"] = jev.grade_call(call, personas[call["persona"]], rubric)
+        _save(path, call)
+        return call["id"]
+
+    _parallel(work, jobs, cfg["run"]["workers"], log, run_dir, "jev")
 
 
 def _job_id(job) -> str:

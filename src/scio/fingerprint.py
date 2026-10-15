@@ -75,6 +75,16 @@ def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backe
     return {"files": files, "settings": settings}
 
 
+def jev_grading(rubric: dict, fact_sheet: str, questions: dict, model: str) -> dict:
+    """Fingerprint the inputs that determine a Jev shadow grade."""
+    return {
+        "rubric": short_hash(rubric),
+        "fact_sheet": file_hash(fact_sheet),
+        "judge_questions": short_hash(questions),
+        "model": model,
+    }
+
+
 def version(sim: dict, grade: dict) -> str:
     return short_hash({"simulation": {"files": sim["files"], "settings": sim["settings"]}, "grading": grade})
 

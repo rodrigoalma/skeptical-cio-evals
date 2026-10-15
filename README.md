@@ -194,6 +194,17 @@ generous than you?), and a weighted kappa per dimension. If a dimension has
 poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 `scio grade results/<timestamp> --force` to re-grade.
 
+## Jev as a shadow judge
+
+Jev is a TypeSafe AI decision model that scores each call alongside the Opus
+judge. It does not change pass/fail or the report headline. Run
+`scio jev results/<timestamp>` to add shadow grades, then use
+`scio calibrate results/<timestamp> --judge jev` to compare them with human
+labels. Jev requires `TYPESAFE_API_KEY`; its usage is reported in tokens
+because TypeSafe prices are not in `config.yaml`. See the [TypeSafe
+introduction](https://docs.typesafe.ai/introduction) and the [Jev judge
+example](https://github.com/danielgshea/jev-as-a-judge).
+
 ## How many calls you need
 
 Small samples are noisy. For a pass rate, the margin of error is roughly

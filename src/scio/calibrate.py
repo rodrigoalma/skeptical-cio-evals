@@ -8,6 +8,7 @@ you're not anchored) and records your scores. `scio calibrate` compares.
 from __future__ import annotations
 
 import csv
+import math
 import random
 import textwrap
 from collections import defaultdict
@@ -100,25 +101,37 @@ def quadratic_kappa(a: list[int], b: list[int], k: int = 5) -> float | None:
     return None if den == 0 else 1 - num / den
 
 
-def calibrate(run_dir: Path, labels_path: Path) -> str:
+def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
+    if judge not in ("opus", "jev"):
+        raise ValueError(f"Unknown judge {judge!r}. Use 'opus' or 'jev'.")
     labels = read_labels(labels_path)
-    calls = {c["id"]: c for c in load_calls(run_dir) if "grade" in c}
+    calls = {
+        c["id"]: c
+        for c in load_calls(run_dir)
+        if "grade" in c and (judge == "opus" or "jev" in c)
+    }
     labels = [r for r in labels if r["call_id"] in calls]
     if not labels:
         raise SystemExit(f"No labels in {labels_path} match calls in {run_dir}. Run `scio label` first.")
 
     pairs: dict[str, list[tuple[int, int]]] = defaultdict(list)
     for r in labels:
-        judge = calls[r["call_id"]]["grade"]["judge"]
+        call = calls[r["call_id"]]
+        grade = call["grade"]["judge"] if judge == "opus" else call["jev"]
         human = int(r["score"])
         if r["dimension"] == "overpromise":
-            pairs["overpromise"].append((human, int(judge["overpromise"])))
+            predicted = int(grade["overpromise"] if judge == "opus" else grade["overpromise_probability"] >= 0.5)
+            pairs["overpromise"].append((human, predicted))
         else:
-            pairs[r["dimension"]].append((human, judge["scores"][r["dimension"]]))
+            predicted = grade["scores"][r["dimension"]]
+            if judge == "jev":
+                predicted = math.floor(predicted + 0.5)
+            pairs[r["dimension"]].append((human, predicted))
 
     n_calls = len({r["call_id"] for r in labels})
-    out = ["## Judge calibration", "",
-           f"Judge scores compared with human labels on {n_calls} calls.", "",
+    judge_name = "Jev" if judge == "jev" else "Judge"
+    out = [f"## {judge_name} calibration", "",
+           f"{judge_name} scores compared with human labels on {n_calls} calls.", "",
            "| Dimension | n | Exact match | Within 1 | Mean abs error | Judge bias | Weighted kappa |",
            "|---|---|---|---|---|---|---|"]
     for dim, ps in pairs.items():
@@ -137,8 +150,9 @@ def calibrate(run_dir: Path, labels_path: Path) -> str:
         ps = pairs["overpromise"]
         agree = mean(int(a == b) for a, b in ps)
         out += ["", f"Overpromise flag: judge and human agree on {agree:.0%} of {len(ps)} calls."]
-    out += ["", "Judge bias above zero means the judge is more generous than you. If a dimension has low "
-            "agreement, tighten its anchors in rubric.yaml and re-grade with `scio grade --force`.", ""]
+    rerun = "scio jev RUN_DIR --force" if judge == "jev" else "scio grade --force"
+    out += ["", f"{judge_name} bias above zero means the judge is more generous than you. If a dimension has low "
+            f"agreement, tighten its anchors in rubric.yaml and re-grade with `{rerun}`.", ""]
     text = "\n".join(out)
     (run_dir / "calibration.md").write_text(text, encoding="utf-8")
     return text

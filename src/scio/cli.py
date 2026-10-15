@@ -4,6 +4,7 @@
     scio run                 simulate, grade and report in one go
     scio run --mock          same, offline, no API key needed
     scio grade RUN_DIR       (re)grade calls in a run
+    scio jev RUN_DIR         run Jev as a shadow judge
     scio report RUN_DIR      rebuild report.md and viewer.html
     scio label RUN_DIR       hand-grade calls for judge calibration
     scio calibrate RUN_DIR   compare the judge with your labels
@@ -138,6 +139,15 @@ def cmd_grade(args) -> None:
     print(f"Report: {report.build(run_dir, cfg)}")
 
 
+def cmd_jev(args) -> None:
+    if not os.environ.get("TYPESAFE_API_KEY", "").strip():
+        sys.exit("TYPESAFE_API_KEY is not set. Export it before running `scio jev`.")
+    run_dir = Path(args.run_dir)
+    cfg, _ = _meta_cfg(run_dir)
+    runner.jev_all(cfg, run_dir, force=args.force)
+    print(f"Report: {report.build(run_dir, cfg)}")
+
+
 def cmd_report(args) -> None:
     print(f"Report: {report.build(Path(args.run_dir))}")
 
@@ -155,7 +165,7 @@ def cmd_label(args) -> None:
 
 def cmd_calibrate(args) -> None:
     run_dir = Path(args.run_dir)
-    print(cal.calibrate(run_dir, Path(args.labels)))
+    print(cal.calibrate(run_dir, Path(args.labels), judge=args.judge))
     report.build(run_dir)
 
 
@@ -209,6 +219,11 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--backend", choices=BACKENDS, help="Override the backend saved with the run")
     p.set_defaults(fn=cmd_grade)
 
+    p = sub.add_parser("jev", help="Run Jev as a shadow judge for a run.")
+    p.add_argument("run_dir")
+    p.add_argument("--force", action="store_true", help="Re-run Jev for calls that already have shadow grades")
+    p.set_defaults(fn=cmd_jev)
+
     p = sub.add_parser("report", help="Rebuild report.md and viewer.html.")
     p.add_argument("run_dir")
     p.set_defaults(fn=cmd_report)
@@ -229,6 +244,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("calibrate", help="Compare judge scores with your labels.")
     p.add_argument("run_dir")
     p.add_argument("--labels", default=str(LABELS))
+    p.add_argument("--judge", choices=("opus", "jev"), default="opus", help="Judge to compare with human labels")
     p.set_defaults(fn=cmd_calibrate)
 
     p = sub.add_parser("personas", help="List buyer personas.")
