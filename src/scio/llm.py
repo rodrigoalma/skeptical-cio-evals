@@ -407,16 +407,25 @@ class ClaudeCodeLLM:
         if model_entry is None and model_usage:
             model_entry = next(iter(model_usage.values()))
         served_model = (model_entry or {}).get("canonicalModel", "")
+        cache_creation = usage_data.get("cache_creation")
+        if cache_creation is None:
+            cache_write_5m_tokens = 0
+            cache_write_1h_tokens = usage_data.get("cache_creation_input_tokens") or 0
+            # Claude Code writes 1h caches when it omits the TTL breakdown.
+        else:
+            cache_write_5m_tokens = cache_creation.get("ephemeral_5m_input_tokens") or 0
+            cache_write_1h_tokens = cache_creation.get("ephemeral_1h_input_tokens") or 0
         usage = Usage(
             model=model,
-            input_tokens=(usage_data.get("input_tokens", 0)
-                          + usage_data.get("cache_creation_input_tokens", 0)
-                          + usage_data.get("cache_read_input_tokens", 0)),
-            output_tokens=usage_data.get("output_tokens", 0),
+            input_tokens=usage_data.get("input_tokens") or 0,
+            output_tokens=usage_data.get("output_tokens") or 0,
             seconds=elapsed,
             stop_reason=response.get("stop_reason") or "",
             served_model=served_model,
             effort=effort or "",
+            cache_read_tokens=usage_data.get("cache_read_input_tokens") or 0,
+            cache_write_5m_tokens=cache_write_5m_tokens,
+            cache_write_1h_tokens=cache_write_1h_tokens,
         )
         _check_model(model, served_model, usage)
         if usage.stop_reason == "refusal":

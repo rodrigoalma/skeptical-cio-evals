@@ -18,6 +18,7 @@ from scio.llm import (
     ModelError,
     MockLLM,
     backend_of,
+    cost_of,
     make_llm,
 )
 
@@ -93,10 +94,56 @@ def test_claude_cli_builds_isolated_argv_and_maps_usage(monkeypatch):
     assert "Other party: buyer says hello" in command[-1]
     assert "Assistant: seller says hi" in command[-1]
     assert text == "next line"
-    assert usage.input_tokens == 15
+    assert usage.input_tokens == 10
+    assert usage.cache_read_tokens == 3
+    assert usage.cache_write_5m_tokens == 0
+    assert usage.cache_write_1h_tokens == 2
+    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 15
     assert usage.output_tokens == 7
+    prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
+    assert cost_of([usage.to_dict()], prices) == 0.0001
     assert usage.served_model == "claude-sonnet-5-5-20260101"
     assert usage.effort == "high"
+
+
+def test_claude_cli_maps_cache_creation_breakdown_without_double_counting(monkeypatch):
+    response = _response(usage={
+        "input_tokens": 10,
+        "cache_read_input_tokens": 20,
+        "cache_creation_input_tokens": 30,
+        "cache_creation": {"ephemeral_1h_input_tokens": 30, "ephemeral_5m_input_tokens": 0},
+        "output_tokens": 7,
+    })
+    monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(response))
+
+    _, usage = ClaudeCodeLLM().complete("claude-sonnet-5-5", "system", [])
+
+    assert usage.input_tokens == 10
+    assert usage.cache_read_tokens == 20
+    assert usage.cache_write_5m_tokens == 0
+    assert usage.cache_write_1h_tokens == 30
+    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 60
+    prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
+    assert cost_of([usage.to_dict()], prices) == 0.00019
+
+
+def test_claude_cli_maps_missing_cache_usage_to_zero(monkeypatch):
+    response = _response(usage={
+        "input_tokens": None,
+        "cache_read_input_tokens": None,
+        "cache_creation_input_tokens": None,
+        "cache_creation": {"ephemeral_1h_input_tokens": None, "ephemeral_5m_input_tokens": None},
+        "output_tokens": None,
+    })
+    monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(response))
+
+    _, usage = ClaudeCodeLLM().complete("claude-sonnet-5-5", "system", [])
+
+    assert usage.input_tokens == 0
+    assert usage.cache_read_tokens == 0
+    assert usage.cache_write_5m_tokens == 0
+    assert usage.cache_write_1h_tokens == 0
+    assert usage.output_tokens == 0
 
 
 def test_claude_cli_removes_api_auth_from_subprocess_env(monkeypatch):
