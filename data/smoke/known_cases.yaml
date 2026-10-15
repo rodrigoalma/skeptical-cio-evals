@@ -1,0 +1,109 @@
+# Hand-written calls with known answers, used by `scio smoke` to check the
+# grader before spending money on a full run. If the grader can't tell these
+# apart, its scores on real calls don't mean much.
+#
+# All four use the bank_cio persona. Rewrite them in your own words, and add
+# cases from calls you've actually seen go well or badly.
+
+- id: strong_discovery
+  persona: bank_cio
+  expect:
+    passed: true
+    hidden_concern_surfaced: true
+    overpromise: false
+  turns:
+    - buyer: >
+        Thanks for making time. I'll be honest, my team is more excited about
+        this than I am. What did you want to cover?
+    - seller: >
+        Appreciate the honesty. I'd rather understand where you're coming from
+        than pitch. When your team brought this to you, what was your first
+        reaction?
+    - buyer: >
+        That it's a lot of risk for a demo that looked nice. We're a bank.
+    - seller: >
+        Fair. When you say risk, what kind worries you most? Data, regulators,
+        something else?
+    - buyer: >
+        Honestly, model risk. Anything that touches a decision has to go
+        through validation under our model risk policy, and we have an exam
+        next year. I'm not adding something to the inventory I can't defend.
+    - seller: >
+        That makes sense, and I'd be worried if you weren't thinking about it.
+        Claude can make mistakes, so for a bank it needs testing on your own
+        documents, monitoring once it's live, and a person reviewing outputs.
+        What would your validation team need to see to be comfortable with a
+        narrow first use case?
+    - buyer: >
+        Documentation, test results on our data, and a clear human in the loop.
+        Also I need to know our customer data isn't training anything.
+    - seller: >
+        On data, by default Anthropic doesn't train on commercial customer data.
+        Zero data retention exists but it's by agreement, not the default, so
+        I'd want our team to walk your compliance folks through it. How about
+        this: we pick one internal workflow, like summarizing loan documents for
+        an analyst who reviews every output, build a test set from fifty of
+        your real files, and put the results in a format your validation team
+        can use. Would a working session with your validation lead next week
+        make sense?
+    - buyer: >
+        That I can work with. Send me some times.
+
+- id: feature_monologue
+  persona: bank_cio
+  expect:
+    passed: false
+    hidden_concern_surfaced: false
+  turns:
+    - buyer: >
+        Thanks for making time. I'll be honest, my team is more excited about
+        this than I am. What did you want to cover?
+    - seller: >
+        Great question! Claude is the most capable AI on the market. We have
+        Opus, Sonnet and Haiku, a one million token context window, prompt
+        caching, batch processing at half price, and availability on Bedrock,
+        Vertex and Foundry. Banks use it for everything from customer service
+        to fraud to document processing, and it can transform your operations
+        end to end.
+    - buyer: >
+        Okay.
+    - seller: >
+        And Claude Code can make your developers dramatically more productive.
+        We can also do Enterprise plans for every employee. Honestly the
+        possibilities are endless. Shall I send over some pricing?
+    - buyer: >
+        Sure, send it over. I have to jump.
+
+- id: overpromise
+  persona: bank_cio
+  expect:
+    overpromise: true
+    passed: false
+  turns:
+    - buyer: >
+        Thanks for making time. I'll be honest, my team is more excited about
+        this than I am. What did you want to cover?
+    - seller: >
+        Happy to be here. What's making you hesitant?
+    - buyer: >
+        Model risk. Anything we use has to be validated and we have a regulator
+        exam next year.
+    - seller: >
+        Totally understand. The good news is Claude is fully compliant with
+        banking regulations, so validation is straightforward. In our tests it
+        hits 99 percent accuracy on loan documents, and for a bank your size I
+        can get you 40 percent off list price if you sign this quarter.
+    - buyer: >
+        Fully compliant with which regulation, exactly?
+
+- id: empty_seller
+  persona: bank_cio
+  expect:
+    passed: false
+  turns:
+    - buyer: >
+        Thanks for making time. I'll be honest, my team is more excited about
+        this than I am. What did you want to cover?
+    - seller: "Sorry, I don't know."
+    - buyer: >
+        Alright. Let's end it here then.

@@ -34,7 +34,7 @@ DEBRIEF_SCHEMA = {
             "description": "The concrete next step you agreed to, in a few words. Empty string if none.",
         },
         "would_take_next_meeting": {"type": "boolean"},
-        "trust": {"type": "integer", "minimum": 1, "maximum": 5, "description": "How much you trust this seller now."},
+        "trust": {"type": "integer", "enum": [1, 2, 3, 4, 5], "description": "How much you trust this seller now."},
         "comment": {"type": "string", "description": "One or two honest sentences, in your voice, about how the call went."},
     },
     "required": [
@@ -47,6 +47,7 @@ DEBRIEF_SCHEMA = {
         "trust",
         "comment",
     ],
+    "additionalProperties": False,
 }
 
 
@@ -66,17 +67,20 @@ def judge_schema(rubric: dict) -> dict:
                         "severity": {"type": "string", "enum": ["minor", "major"]},
                     },
                     "required": ["quote", "issue", "severity"],
+                    "additionalProperties": False,
                 },
             },
             "scores": {
                 "type": "object",
-                "properties": {d: {"type": "integer", "minimum": 1, "maximum": 5} for d in dims},
+                "properties": {d: {"type": "integer", "enum": [1, 2, 3, 4, 5]} for d in dims},
                 "required": dims,
+                "additionalProperties": False,
             },
             "best_moment": {"type": "string", "description": "The seller's single best moment, quoted briefly."},
             "worst_moment": {"type": "string", "description": "The seller's single worst moment, quoted briefly."},
         },
         "required": ["reasoning", "unsupported_claims", "scores", "best_moment", "worst_moment"],
+        "additionalProperties": False,
     }
 
 
@@ -123,7 +127,15 @@ def passed(debrief: dict, judge: dict, score: float, rubric: dict) -> bool:
     return all(checks)
 
 
-def grade_call(call: dict, persona: dict, llm: LLM, buyer_model: str, judge_model: str, rubric: dict) -> dict:
+def grade_call(
+    call: dict,
+    persona: dict,
+    llm: LLM,
+    buyer_model: str,
+    judge_model: str,
+    rubric: dict,
+    judge_effort: str | None = None,
+) -> dict:
     transcript = format_transcript(call["turns"])
     hidden = loaders.as_yaml(persona["hidden"])
 
@@ -136,7 +148,6 @@ def grade_call(call: dict, persona: dict, llm: LLM, buyer_model: str, judge_mode
             persona_hidden=hidden,
             transcript=transcript,
         ),
-        tool_name="record_debrief",
         schema=DEBRIEF_SCHEMA,
     )
 
@@ -150,9 +161,8 @@ def grade_call(call: dict, persona: dict, llm: LLM, buyer_model: str, judge_mode
             rubric=loaders.as_yaml(rubric["dimensions"]),
             transcript=transcript,
         ),
-        tool_name="record_grade",
         schema=judge_schema(rubric),
-        max_tokens=4000,
+        effort=judge_effort,
     )
     # A major unsupported claim is an overpromise. Minor ones only lower the
     # honesty score.
@@ -166,4 +176,5 @@ def grade_call(call: dict, persona: dict, llm: LLM, buyer_model: str, judge_mode
         "weighted_score": score,
         "passed": passed(debrief, judge, score, rubric),
         "grading_usage": {"debrief": u_debrief.to_dict(), "judge": u_judge.to_dict()},
+        "judge_model": judge_model,
     }

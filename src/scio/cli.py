@@ -1,5 +1,6 @@
 """Command line entry point.
 
+    scio smoke               check the grader on known good/bad calls first
     scio run                 simulate, grade and report in one go
     scio run --mock          same, offline, no API key needed
     scio grade RUN_DIR       (re)grade calls in a run
@@ -17,7 +18,7 @@ import sys
 from pathlib import Path
 
 from . import calibrate as cal
-from . import loaders, report, runner
+from . import loaders, report, runner, smoke
 from .llm import make_llm
 
 RESULTS = loaders.ROOT / "results"
@@ -112,6 +113,15 @@ def cmd_calibrate(args) -> None:
     report.build(run_dir)
 
 
+def cmd_smoke(args) -> None:
+    _check_key(args.mock)
+    cfg = loaders.load_config()
+    if args.judge:
+        cfg["roles"]["judge"] = args.judge
+    ok = smoke.run(make_llm(args.mock), cfg)
+    sys.exit(0 if ok else 1)
+
+
 def cmd_personas(args) -> None:
     for pid, p in loaders.load_personas().items():
         pub = p["public"]
@@ -121,6 +131,11 @@ def cmd_personas(args) -> None:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="scio", description="Skeptical CIO: evals for AI solutions architects.")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p = sub.add_parser("smoke", help="Check the grader on known good and bad calls.")
+    p.add_argument("--judge", help="Model name for the judge")
+    p.add_argument("--mock", action="store_true", help="Offline mock model, no API calls")
+    p.set_defaults(fn=cmd_smoke)
 
     p = sub.add_parser("run", help="Simulate, grade and report.")
     p.add_argument("--seller-models", help="Comma list of model names from config.yaml, e.g. haiku,sonnet")

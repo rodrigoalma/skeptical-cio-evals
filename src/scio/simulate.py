@@ -39,9 +39,9 @@ def run_call(
     seller_model: str,
     buyer_model: str,
     max_seller_turns: int = 8,
-    max_tokens: int = 600,
-    seller_temperature: float = 1.0,
-    buyer_temperature: float = 1.0,
+    max_tokens: int = 4000,
+    seller_effort: str | None = None,
+    buyer_effort: str | None = None,
 ) -> dict:
     seller_system = loaders.render(
         f"seller_{seller_prompt}",
@@ -59,22 +59,22 @@ def run_call(
     turns = [{"speaker": "buyer", "text": persona["hidden"]["opening_line"].strip()}]
     usage: list[Usage] = []
     ended_by = "max_turns"
+    truncated = False
     started = time.time()
 
     for _ in range(max_seller_turns):
-        text, u = llm.complete(
-            seller_model, seller_system, _view(turns, "seller"), max_tokens, seller_temperature
-        )
+        text, u = llm.complete(seller_model, seller_system, _view(turns, "seller"), max_tokens, seller_effort)
         usage.append(u)
-        turns.append({"speaker": "seller", "text": text, "seconds": round(u.seconds, 2)})
+        turns.append({"speaker": "seller", "text": text, "seconds": u.seconds, "stop_reason": u.stop_reason})
+        if u.stop_reason == "max_tokens":
+            truncated = True
 
-        text, u = llm.complete(
-            buyer_model, buyer_system, _view(turns, "buyer"), max_tokens, buyer_temperature
-        )
+        text, u = llm.complete(buyer_model, buyer_system, _view(turns, "buyer"), max_tokens, buyer_effort)
         usage.append(u)
         text, ended = _strip_end(text)
-        if text:
-            turns.append({"speaker": "buyer", "text": text})
+        if text or not ended:
+            # Keep turns alternating even if the buyer says nothing.
+            turns.append({"speaker": "buyer", "text": text or "(silence)"})
         if ended:
             ended_by = "buyer"
             break
@@ -87,6 +87,9 @@ def run_call(
         "buyer_model": buyer_model,
         "turns": turns,
         "ended_by": ended_by,
+        # A clipped seller turn is a harness problem, not a bad answer. The
+        # report counts these and leaves them out of the scores.
+        "status": "truncated" if truncated else "ok",
         "wall_seconds": round(time.time() - started, 1),
         "usage": {
             "seller": [u.to_dict() for u, t in zip(usage, _roles(len(usage))) if t == "seller"],

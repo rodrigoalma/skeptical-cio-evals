@@ -67,15 +67,15 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
             buyer_model=buyer_model,
             max_seller_turns=r["max_seller_turns"],
             max_tokens=r["max_tokens_per_turn"],
-            seller_temperature=r["seller_temperature"],
-            buyer_temperature=r["buyer_temperature"],
+            seller_effort=cfg.get("effort", {}).get("seller"),
+            buyer_effort=cfg.get("effort", {}).get("buyer"),
         )
         call["id"] = cid
         call["seller_model_name"] = m
         _save(path, call)
         return cid
 
-    _parallel(work, jobs, r["workers"], log)
+    _parallel(work, jobs, r["workers"], log, run_dir, "simulate")
 
 
 def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print) -> None:
@@ -95,15 +95,25 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
 
     def work(job):
         path, call = job
-        call["grade"] = grade_call(call, personas[call["persona"]], llm, buyer_model, judge_model, rubric)
+        call["grade"] = grade_call(
+            call, personas[call["persona"]], llm, buyer_model, judge_model, rubric,
+            judge_effort=cfg.get("effort", {}).get("judge"),
+        )
         call["grade"]["judge_model"] = judge_model
         _save(path, call)
         return call["id"]
 
-    _parallel(work, jobs, cfg["run"]["workers"], log)
+    _parallel(work, jobs, cfg["run"]["workers"], log, run_dir, "grade")
 
 
-def _parallel(fn, jobs, workers, log) -> None:
+def _job_id(job) -> str:
+    first = job[0]
+    return first if isinstance(first, str) else Path(first).stem
+
+
+def _parallel(fn, jobs, workers, log, run_dir: Path, stage: str) -> None:
+    """Run jobs in parallel. Failures never become a score: they go to
+    errors.jsonl with a failure class, and re-running retries just those."""
     done = failed = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(fn, j): j for j in jobs}
@@ -114,10 +124,22 @@ def _parallel(fn, jobs, workers, log) -> None:
                 log(f"  [{done + failed}/{len(jobs)}] {cid}")
             except Exception as e:  # keep going; one bad call shouldn't sink the run
                 failed += 1
-                log(f"  [{done + failed}/{len(jobs)}] FAILED: {e}")
+                kind = getattr(e, "kind", None) or ("timeout" if "Timeout" in type(e).__name__ else "harness_error")
+                usage = getattr(e, "usage", None)
+                record = {
+                    "time": datetime.now().isoformat(timespec="seconds"),
+                    "stage": stage,
+                    "id": _job_id(futures[fut]),
+                    "failure_class": kind,
+                    "error": f"{type(e).__name__}: {e}",
+                    "usage": usage.to_dict() if usage else None,
+                }
+                with open(run_dir / "errors.jsonl", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(record) + "\n")
+                log(f"  [{done + failed}/{len(jobs)}] FAILED ({kind}): {record['id']}")
                 log(traceback.format_exc(limit=2))
     if failed:
-        log(f"{failed} failed. Run the same command again to retry just those.")
+        log(f"{failed} failed (see errors.jsonl). Run the same command again to retry just those.")
 
 
 def write_run_meta(cfg: dict, run_dir: Path, mock: bool) -> None:

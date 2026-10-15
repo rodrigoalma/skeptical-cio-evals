@@ -12,15 +12,23 @@ roles:
   buyer: sonnet
   judge: opus
 
+# How much each role thinks before answering (low, medium, high, xhigh, max).
+# Leave a role empty to use the model's default. The seller's effort is part
+# of what you're testing, so change it on purpose, not by accident.
+effort:
+  seller:
+  buyer: low
+  judge: high
+
 run:
   seller_models: [haiku, sonnet]
   seller_prompts: [v1, v2]
   personas: all
-  trials: 2              # calls per (seller model, prompt, persona) combo
+  trials: 3              # calls per (seller model, prompt, persona) combo
   max_seller_turns: 8
-  max_tokens_per_turn: 600
-  buyer_temperature: 1.0
-  seller_temperature: 1.0
+  # Thinking tokens count toward this limit, so leave headroom. Turn length
+  # is controlled by the prompts, not by cutting the model off.
+  max_tokens_per_turn: 4000
   workers: 4             # calls run in parallel
 
 # USD per million tokens (input, output). Used for the cost columns in the

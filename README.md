@@ -85,9 +85,16 @@ scio run --mock
 
 # Real run (needs an Anthropic API key)
 export ANTHROPIC_API_KEY=sk-ant-...
-scio run --personas bank_cio,payer_cto --trials 1   # small first run
+scio smoke                                          # check the grader first
+scio run --personas bank_cio,payer_cto --trials 1   # small pilot, read the transcripts
 scio run                                            # full default run
 ```
+
+`scio smoke` grades four hand-written calls with known answers (a strong
+discovery call, a feature monologue, a call full of forbidden promises, and an
+empty one). If the grader can't tell those apart, its scores on real calls
+aren't worth much. Run it again whenever you change the rubric or judge
+prompt.
 
 Each run writes to `results/<timestamp>/`:
 
@@ -96,6 +103,11 @@ Each run writes to `results/<timestamp>/`:
 - `viewer.html`, a page for reading transcripts side by side with the scores
 - `results.csv` with one row per call for your own analysis
 - `calls/*.json` with every transcript, debrief and grade
+- `errors.jsonl` for attempts that failed (API errors, timeouts, refusals),
+  each with a failure class. These are never scored as a bad call.
+
+Calls where a seller turn got cut off at the token limit are marked
+`truncated` and left out of the scores, for the same reason.
 
 If a run gets interrupted, `scio run --resume results/<timestamp>` picks up
 where it left off without re-running finished calls.
@@ -116,6 +128,15 @@ generous than you?), and a weighted kappa per dimension. If a dimension has
 poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 `scio grade results/<timestamp> --force` to re-grade.
 
+## How many calls you need
+
+Small samples are noisy. For a pass rate, the margin of error is roughly
+`1 / sqrt(calls)`. The default run is 6 personas × 3 trials = 18 calls per
+seller setup, which is about ±24 points. That's enough to see a big gap
+(say v1 at 20% vs v2 at 70%), not a small one. If two setups are within that
+margin, add trials before drawing conclusions. The report shows a confidence
+interval on every pass rate so this stays visible.
+
 ## What you can change
 
 | To change | Edit |
@@ -124,7 +145,8 @@ poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 | The buyers | `data/personas/*.yaml` |
 | Seller instructions | `prompts/seller_v1.md`, `prompts/seller_v2.md`, or add `seller_v3.md` |
 | What "good" means | `rubric.yaml` |
-| Models, trials, pricing | `config.yaml` or command line flags |
+| Models, effort, trials, pricing | `config.yaml` or command line flags |
+| Known-answer grader checks | `data/smoke/known_cases.yaml` |
 
 `v1` is a deliberately basic prompt ("get them interested"). `v2` is written
 the way I'd coach a new SA: discovery first, short turns, only claim what you
@@ -140,6 +162,15 @@ If you're an SI building on Claude, the same setup works for your own use
 cases. Swap the fact sheet for your offering, write personas from your real
 deals, and put your own coaching standards in the rubric. It's also a useful
 way to test an SA assistant or sales copilot before it talks to a customer.
+
+## Built with
+
+The harness follows the eval guidance in Anthropic's
+[`claude-api` skill](https://github.com/anthropics/skills/tree/main/skills/claude-api)
+(`shared/evals/build-eval.md` and `eval-audit.md`): failures kept out of the
+scores, served model checked on every call, structured outputs for the judge,
+known-good and known-bad checks before a paid run, judge calibration against
+human labels, and confidence intervals on everything.
 
 ## Limitations
 

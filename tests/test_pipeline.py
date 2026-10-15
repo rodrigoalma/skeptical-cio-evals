@@ -108,3 +108,31 @@ def test_full_mock_run(tmp_path):
     # Re-running skips calls already on disk
     runner.simulate_all(llm, cfg, run_dir, log=quiet)
     assert len(runner.load_calls(run_dir)) == 4
+
+
+def test_smoke_cases_load_and_grade_offline():
+    from scio import smoke
+    cases = smoke.load_cases()
+    assert {c["id"] for c in cases} >= {"strong_discovery", "feature_monologue", "overpromise"}
+    for c in cases:
+        assert c["turns"][0]["speaker"] == "buyer"
+        assert all(t["speaker"] in ("buyer", "seller") for t in c["turns"])
+    # The mock can't judge, so we only check the plumbing runs.
+    smoke.run(MockLLM(), loaders.load_config(), log=lambda *a: None)
+
+
+def test_structured_schemas_are_strict():
+    from scio.grade import DEBRIEF_SCHEMA, judge_schema
+
+    def walk(s):
+        if s.get("type") == "object":
+            assert s.get("additionalProperties") is False
+            assert set(s["required"]) == set(s["properties"])
+            for v in s["properties"].values():
+                walk(v)
+        if s.get("type") == "array":
+            walk(s["items"])
+        assert "minimum" not in s and "maximum" not in s
+
+    walk(DEBRIEF_SCHEMA)
+    walk(judge_schema(loaders.load_rubric()))

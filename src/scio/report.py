@@ -52,6 +52,7 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         "overpromise": g["judge"]["overpromise"],
         "unsupported_claims": len(g["judge"]["unsupported_claims"]),
         "ended_by": call["ended_by"],
+        "status": call.get("status", "ok"),
         **g["metrics"],
         "seller_cost_usd": round(_cost(seller_usage, pricing), 5),
         "seller_sec_per_turn": round(mean(u["seconds"] for u in seller_usage), 2) if seller_usage else 0,
@@ -87,9 +88,15 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
         w.writeheader()
         w.writerows(rows)
 
+    # Truncated calls stay in results.csv and the viewer, but not in the
+    # scores: a clipped turn is a harness problem, not a bad answer.
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
-        groups[(r["seller_model"], r["seller_prompt"])].append(r)
+        if r["status"] == "ok":
+            groups[(r["seller_model"], r["seller_prompt"])].append(r)
+    n_truncated = sum(r["status"] != "ok" for r in rows)
+    errors_path = run_dir / "errors.jsonl"
+    n_errors = sum(1 for _ in open(errors_path, encoding="utf-8")) if errors_path.exists() else 0
     configs = sorted(groups)
 
     lines = [f"# Skeptical CIO eval report: `{run_dir.name}`", ""]
@@ -101,6 +108,8 @@ def build(run_dir: Path, cfg: dict | None = None) -> Path:
     lines += [
         f"{len(rows)} graded calls across {len({r['persona'] for r in rows})} personas. "
         f"Buyer played by `{buyer}`, judged by `{judge}`.",
+        "",
+        f"Excluded from scores: {n_truncated} truncated calls. Failed attempts logged in errors.jsonl: {n_errors}.",
         "",
         "## Headline",
         "",

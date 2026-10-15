@@ -14,4 +14,4 @@ ${transcript}
 
 Step out of the conversation and give an honest private debrief, as the buyer.
 Base every answer on what was actually said in the transcript, not on what the
-seller might have meant. Use the record_debrief tool.
+seller might have meant.
