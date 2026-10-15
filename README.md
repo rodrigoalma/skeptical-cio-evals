@@ -77,18 +77,22 @@ copying one and editing it.
 ```bash
 git clone https://github.com/rodrigoalma/skeptical-cio-evals
 cd skeptical-cio-evals
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync                                                    # installs Python, dependencies and pytest
 
 # Check everything works without spending anything
-scio run --mock
+uv run scio run --mock
 
 # Real run (needs an Anthropic API key)
-cp .env.example .env                                # then put your key in .env
-scio smoke                                          # check the grader first
-scio run --personas bank_cio,payer_cto --trials 1   # small pilot, read the transcripts
-scio run                                            # full default run
+cp .env.example .env                                       # then put your key in .env
+uv run scio smoke                                          # check the grader first
+uv run scio run --personas bank_cio,payer_cto --trials 1   # small pilot, read the transcripts
+uv run scio run                                            # full default run
 ```
+
+This uses [uv](https://docs.astral.sh/uv/), and `uv.lock` pins every
+dependency so runs are comparable over time. The rest of this README writes
+`scio ...` for short: put `uv run` in front, or run `source .venv/bin/activate`
+once. Without uv, `pip install -e .` in a virtualenv also works.
 
 You can also `export ANTHROPIC_API_KEY=...` instead of using `.env`. An
 exported key takes precedence over the one in `.env`.
