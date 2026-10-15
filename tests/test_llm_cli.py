@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -50,13 +51,23 @@ def _response(**overrides):
     return response
 
 
-def _fake_run(response=None, *, returncode=0, stderr="", raw_stdout=None, seen=None):
+def _fake_run(response=None, *, returncode=0, stderr="", raw_stdout=None, auth_status=None, seen=None):
     def run(command, **kwargs):
+        is_auth_status = command[:3] == ["claude", "auth", "status"]
         if seen is not None:
-            seen["command"] = command
-            seen["kwargs"] = kwargs
+            if is_auth_status:
+                seen.setdefault("auth_calls", []).append((command, kwargs))
+            else:
+                seen["command"] = command
+                seen["kwargs"] = kwargs
         assert Path(kwargs["cwd"]).is_dir()
         assert list(Path(kwargs["cwd"]).iterdir()) == []
+        if is_auth_status:
+            return SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(auth_status or {"loggedIn": True, "email": "cio@example.test"}),
+                stderr="",
+            )
         stdout = raw_stdout if raw_stdout is not None else json.dumps(response or _response())
         return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
 
@@ -161,6 +172,73 @@ def test_claude_cli_removes_api_auth_from_subprocess_env(monkeypatch):
     assert subprocess_env["PATH"] == "/test/path"
     assert os.environ["ANTHROPIC_API_KEY"] == "test-api-key"
     assert os.environ["ANTHROPIC_AUTH_TOKEN"] == "test-auth-token"
+    auth_command, auth_kwargs = seen["auth_calls"][0]
+    assert auth_command == ["claude", "auth", "status", "--json"]
+    assert "ANTHROPIC_API_KEY" not in auth_kwargs["env"]
+    assert "ANTHROPIC_AUTH_TOKEN" not in auth_kwargs["env"]
+
+
+def test_claude_cli_reads_account_email_once_for_concurrent_calls(monkeypatch):
+    seen = {}
+    monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(seen=seen))
+    llm = ClaudeCodeLLM()
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        replies = list(pool.map(lambda _: llm.complete("claude-sonnet-5-5", "sys", [])[0], range(12)))
+
+    assert replies == ["next line"] * 12
+    assert len(seen["auth_calls"]) == 1
+
+
+def test_claude_cli_requires_a_logged_in_account_with_email(monkeypatch):
+    for auth_status in (
+        {"loggedIn": False, "email": "cio@example.test"},
+        {"loggedIn": True, "email": ""},
+    ):
+        seen = {}
+        monkeypatch.setattr(
+            "scio.llm.subprocess.run",
+            _fake_run(auth_status=auth_status, seen=seen),
+        )
+
+        llm = ClaudeCodeLLM()
+
+        def call():
+            try:
+                llm.complete("claude-sonnet-5-5", "sys", [])
+            except AccountError as error:
+                return error.kind
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            assert list(pool.map(lambda _: call(), range(4))) == ["cli_auth"] * 4
+        assert len(seen["auth_calls"]) == 1
+        assert "command" not in seen
+
+
+def test_claude_cli_fails_replies_that_include_account_email(monkeypatch):
+    email = "cio@example.test"
+    monkeypatch.setattr(
+        "scio.llm.subprocess.run",
+        _fake_run(
+            _response(result="Contact CIO@EXAMPLE.TEST for details."),
+            auth_status={"loggedIn": True, "email": email},
+        ),
+    )
+
+    with pytest.raises(ModelError) as error:
+        ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
+
+    assert error.value.kind == "context_leak"
+    assert error.value.usage is not None
+    assert email not in str(error.value).casefold()
+
+
+def test_claude_cli_allows_a_reply_without_account_email(monkeypatch):
+    monkeypatch.setattr(
+        "scio.llm.subprocess.run",
+        _fake_run(_response(result="A clean seller reply.")),
+    )
+    assert ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])[0] == "A clean seller reply."
 
 
 def test_structured_cli_passes_schema_and_maps_tool_use(monkeypatch):
@@ -227,6 +305,16 @@ def test_cli_failures_and_fatal_account_errors(monkeypatch):
         with pytest.raises(AccountError) as error:
             ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
         assert error.value.kind == kind
+
+
+def test_cli_refusal_in_error_response_is_labeled_refusal(monkeypatch):
+    monkeypatch.setattr(
+        "scio.llm.subprocess.run",
+        _fake_run(_response(is_error=True, stop_reason="refusal", result="I cannot help with that.")),
+    )
+    with pytest.raises(ModelError) as error:
+        ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
+    assert error.value.kind == "refusal"
 
 
 @pytest.mark.parametrize(

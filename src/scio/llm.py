@@ -25,6 +25,7 @@ import os
 import random
 import subprocess
 import tempfile
+import threading
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
@@ -326,11 +327,71 @@ def _fatal_cli_error(text: str) -> str | None:
     return None
 
 
+def _cli_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    return env
+
+
 class ClaudeCodeLLM:
     """Run prompts through a logged-in Claude Code CLI subscription."""
 
     def __init__(self, timeout_s: float = 300.0):
         self.timeout_s = timeout_s
+        self._auth_lock = threading.Lock()
+        self._email = None
+        self._auth_error = None
+
+    def _account_email(self) -> str:
+        if self._email is not None:
+            return self._email
+        if self._auth_error is not None:
+            raise self._auth_error
+        with self._auth_lock:
+            if self._email is not None:
+                return self._email
+            if self._auth_error is not None:
+                raise self._auth_error
+            try:
+                try:
+                    with tempfile.TemporaryDirectory(prefix="scio-claude-auth-") as cwd:
+                        completed = subprocess.run(
+                            ["claude", "auth", "status", "--json"],
+                            cwd=cwd,
+                            stdin=subprocess.DEVNULL,
+                            capture_output=True,
+                            text=True,
+                            timeout=self.timeout_s,
+                            check=False,
+                            env=_cli_env(),
+                        )
+                except subprocess.TimeoutExpired as error:
+                    raise AccountError(
+                        "cli_auth", f"Claude CLI auth status timed out after {self.timeout_s:g}s"
+                    ) from error
+                except OSError as error:
+                    raise AccountError("cli_auth", "could not run Claude CLI auth status") from error
+                if completed.returncode != 0:
+                    raise AccountError(
+                        "cli_auth", f"Claude CLI auth status failed with exit code {completed.returncode}"
+                    )
+                try:
+                    status = json.loads(completed.stdout)
+                except json.JSONDecodeError as error:
+                    raise AccountError("cli_auth", "Claude CLI auth status returned invalid JSON") from error
+                if not isinstance(status, dict):
+                    raise AccountError("cli_auth", "Claude CLI auth status was not an object")
+                if status.get("loggedIn") is not True:
+                    raise AccountError("cli_auth", "Claude Code CLI is not logged in")
+                email = status.get("email")
+                if not isinstance(email, str) or not email.strip():
+                    raise AccountError("cli_auth", "Claude CLI auth status did not include an account email")
+            except AccountError as error:
+                self._auth_error = error
+                raise
+            self._email = email.strip()
+            return self._email
 
     def _call(self, model, system, prompt, effort, schema=None):
         command = ["claude", "-p", "--model", model]
@@ -350,9 +411,7 @@ class ClaudeCodeLLM:
 
         start = time.perf_counter()
         # Keep API credentials from overriding Claude Code's subscription login.
-        env = os.environ.copy()
-        env.pop("ANTHROPIC_API_KEY", None)
-        env.pop("ANTHROPIC_AUTH_TOKEN", None)
+        env = _cli_env()
         try:
             with tempfile.TemporaryDirectory(prefix="scio-claude-") as cwd:
                 completed = subprocess.run(
@@ -388,6 +447,8 @@ class ClaudeCodeLLM:
                 raise AccountError(fatal_kind, _error_excerpt(detail))
             raise ModelError("cli_error", "Claude CLI JSON response was not an object")
         if response.get("is_error"):
+            if response.get("stop_reason") == "refusal":
+                raise ModelError("refusal", "the model declined this request")
             status = response.get("api_error_status")
             error_text = "\n".join(filter(None, (
                 str(response.get("subtype", "")), str(status or ""), str(response.get("result", "")), detail,
@@ -434,8 +495,12 @@ class ClaudeCodeLLM:
 
     # Claude Code does not expose a max_tokens option for either call type.
     def complete(self, model, system, messages, max_tokens=4000, effort=None):
+        email = self._account_email()
         response, usage = self._call(model, system, _render_transcript(messages), effort)
-        return str(response.get("result", "")).strip(), usage
+        text = str(response.get("result", "")).strip()
+        if email.casefold() in text.casefold():
+            raise ModelError("context_leak", "reply contains the account email from Claude Code's context", usage)
+        return text, usage
 
     def structured(self, model, system, prompt, schema, max_tokens=16000, effort=None):
         response, usage = self._call(model, system, prompt, effort, schema)

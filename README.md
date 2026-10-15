@@ -134,9 +134,12 @@ limit, continue it with `scio run --resume results/<timestamp>`.
 Each turn's transcript is sent as one message because the CLI does not accept
 message history. Subscription runs are a separate test version and are not
 pooled with API runs. Reports still show API-equivalent costs from `pricing`,
-not your actual subscription spend. Claude Code adds a small neutral
-environment block of about 500 tokens, and `max_tokens_per_turn` is not
-enforced by the CLI. This option is for personal use only.
+not your actual subscription spend. Claude Code adds a small context block
+with environment details and your account email. It cannot be disabled while
+using subscription login. If a seller or buyer reply contains your email, the
+call fails as `context_leak`, is never scored, and is retried with
+`scio run --resume`. `max_tokens_per_turn` is not enforced by the CLI. This
+option is for personal use only.
 
 ## The dashboard
 
