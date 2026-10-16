@@ -11,11 +11,9 @@ from . import loaders
 from .grade import grade_call
 from .llm import LLM, ModelError
 
-SMOKE_FILE = loaders.DATA / "smoke" / "known_cases.yaml"
-
-
-def load_cases() -> list[dict]:
-    cases = loaders.load_yaml(SMOKE_FILE)
+def load_cases(*, track: str) -> list[dict]:
+    path = loaders.ROOT / loaders.track_file_path("smoke_cases", track=track)
+    cases = loaders.load_yaml(path)
     for c in cases:
         c["turns"] = [
             {"speaker": speaker, "text": " ".join(str(text).split())}
@@ -25,19 +23,20 @@ def load_cases() -> list[dict]:
     return cases
 
 
-def run(llm: LLM, cfg: dict, log=print) -> bool:
-    rubric = loaders.load_rubric()
-    personas = loaders.load_personas("all")
+def run(llm: LLM, cfg: dict, *, track: str, log=print) -> bool:
+    rubric = loaders.load_rubric(track=track)
+    personas = loaders.load_personas("all", track=track)
     buyer_model = cfg["models"][cfg["roles"]["buyer"]]
     judge_model = cfg["models"][cfg["roles"]["judge"]]
     judge_effort = cfg["effort"]["judge"]
 
     all_ok = True
     errors = 0
-    log(f"Grading {len(load_cases())} known cases with judge {judge_model} at {judge_effort} effort...\n")
-    for case in load_cases():
+    log(f"Grading {len(load_cases(track=track))} known cases with judge {judge_model} at {judge_effort} effort...\n")
+    for case in load_cases(track=track):
         try:
-            g = grade_call(case, personas[case["persona"]], llm, buyer_model, judge_model, rubric, judge_effort)
+            g = grade_call(case, personas[case["persona"]], llm, buyer_model, judge_model, rubric,
+                           judge_effort, track=track)
         except ModelError as e:  # a failed call says nothing about the grader, so report it apart
             errors += 1
             all_ok = False

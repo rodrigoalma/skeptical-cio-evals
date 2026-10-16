@@ -14,6 +14,8 @@ from scio import calibrate, cli, jev, loaders, report, runner
 from scio.grade import weighted_score
 from scio.llm import AccountError, MockLLM
 
+TRACK = loaders.DEFAULT_TRACK
+
 
 def _response(rubric, *, overpromise=0.25, model="jev-test", one_based=()):
     scores = {}
@@ -64,7 +66,7 @@ def _call(call_id="call-1", *, grade=True, jev_result=None):
         call["grade"] = {
             "debrief": {"hidden_concern_surfaced": True, "hidden_concern_addressed": True},
             "judge": {
-                "scores": {dimension: 4 for dimension in loaders.load_rubric()["dimensions"]},
+                "scores": {dimension: 4 for dimension in loaders.load_rubric(track=TRACK)["dimensions"]},
                 "overpromise": False,
                 "unsupported_claims": [],
             },
@@ -79,14 +81,14 @@ def _call(call_id="call-1", *, grade=True, jev_result=None):
 
 
 def test_jev_builds_state_questions_and_maps_fractional_scores(monkeypatch):
-    rubric = loaders.load_rubric()
-    persona = loaders.load_personas(["bank_cio"])["bank_cio"]
+    rubric = loaders.load_rubric(track=TRACK)
+    persona = loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"]
     call = _call()
-    monkeypatch.setattr(jev.loaders, "fact_sheet", lambda: "fact sheet for test")
+    monkeypatch.setattr(jev.loaders, "fact_sheet", lambda *, track: "fact sheet for test")
     response = _response(rubric, one_based={"business_value"})
     requests = _install_fake_client(monkeypatch, response)
 
-    result = jev.grade_call(call, persona, rubric)
+    result = jev.grade_call(call, persona, rubric, track=TRACK)
 
     assert len(requests) == 1
     state = requests[0]["state"]
@@ -117,20 +119,22 @@ def test_jev_builds_state_questions_and_maps_fractional_scores(monkeypatch):
 
 @pytest.mark.parametrize(("probability", "expected"), [(0.49, True), (0.5, False)])
 def test_jev_shadow_pass_uses_existing_pass_rules(monkeypatch, probability, expected):
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=TRACK)
     response = _response(rubric, overpromise=probability)
     _install_fake_client(monkeypatch, response)
 
-    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"])["bank_cio"], rubric)
+    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric,
+                            track=TRACK)
 
     assert result["passed"] is expected
 
 
 def test_jev_uses_requested_model_when_response_omits_it(monkeypatch):
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=TRACK)
     _install_fake_client(monkeypatch, _response(rubric, model=None))
 
-    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"])["bank_cio"], rubric)
+    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric,
+                            track=TRACK)
 
     assert result["model"] == "jev-latest"
     assert result["fingerprint"]["model"] == "jev-latest"
@@ -154,8 +158,8 @@ def test_cli_jev_skips_existing_grades_and_force_regrades(monkeypatch, tmp_path)
     _write_run(run_dir, [existing, missing, ungraded])
     monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
     monkeypatch.setattr(cli, "load_dotenv", lambda *_: None)
-    monkeypatch.setattr(cli.report, "build", lambda *_: run_dir / "report.md")
-    rubric = loaders.load_rubric()
+    monkeypatch.setattr(cli.report, "build", lambda *_args, **_kwargs: run_dir / "report.md")
+    rubric = loaders.load_rubric(track=TRACK)
     requests = _install_fake_client(monkeypatch, _response(rubric))
 
     cli.main(["jev", str(run_dir)])
@@ -177,7 +181,7 @@ def test_jev_cli_fails_fast_without_key(monkeypatch, tmp_path):
 
 
 def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=TRACK)
     failed_run = tmp_path / "failed"
     _write_run(failed_run, [_call()])
 
@@ -189,7 +193,7 @@ def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
         return Client(None, [])
 
     monkeypatch.setattr(jev, "TypeSafeClient", fail_client)
-    runner.jev_all(loaders.load_config(), failed_run, log=lambda *_: None)
+    runner.jev_all(loaders.load_config(), failed_run, track=TRACK, log=lambda *_: None)
     error = json.loads((failed_run / "errors.jsonl").read_text(encoding="utf-8"))
     assert error["stage"] == "jev"
     assert error["id"] == "call-1"
@@ -207,7 +211,7 @@ def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
 
     monkeypatch.setattr(jev, "TypeSafeClient", auth_client)
     with pytest.raises(AccountError, match="typesafe_auth"):
-        runner.jev_all(loaders.load_config(), auth_run, log=lambda *_: None)
+        runner.jev_all(loaders.load_config(), auth_run, track=TRACK, log=lambda *_: None)
     assert not (auth_run / "errors.jsonl").exists()
 
 
@@ -231,10 +235,10 @@ def test_report_adds_jev_comparison_without_changing_opus_headline(tmp_path):
     cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["basic"],
                        seller_efforts=["medium"], trials=1)
     run_dir = tmp_path / "mock-run"
-    runner.write_run_meta(cfg, run_dir, mock=True)
+    runner.write_run_meta(cfg, run_dir, mock=True, track=TRACK)
     quiet = lambda *_: None
-    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
-    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.simulate_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
     for path in (run_dir / "calls").glob("*.json"):
         call = json.loads(path.read_text(encoding="utf-8"))
         call["jev"] = {
@@ -249,7 +253,7 @@ def test_report_adds_jev_comparison_without_changing_opus_headline(tmp_path):
         }
         path.write_text(json.dumps(call), encoding="utf-8")
 
-    text = report.build(run_dir, cfg).read_text(encoding="utf-8")
+    text = report.build(run_dir, track=TRACK, cfg=cfg).read_text(encoding="utf-8")
 
     assert "## Jev shadow judge" in text
     assert "| discovery |" in text
@@ -283,6 +287,6 @@ def test_calibrate_jev_rounds_scores_and_cli_selects_jev(tmp_path, monkeypatch):
     seen = {}
     monkeypatch.setattr(cli, "load_dotenv", lambda *_: None)
     monkeypatch.setattr(cli.cal, "calibrate", lambda _run, _labels, judge: seen.setdefault("judge", judge) or "")
-    monkeypatch.setattr(cli.report, "build", lambda *_: run_dir / "report.md")
+    monkeypatch.setattr(cli.report, "build", lambda *_args, **_kwargs: run_dir / "report.md")
     cli.main(["calibrate", str(run_dir), "--labels", str(labels), "--judge", "jev"])
     assert seen["judge"] == "jev"

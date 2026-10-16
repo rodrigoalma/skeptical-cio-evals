@@ -4,7 +4,7 @@
 2. Buyer debrief: the buyer model, still holding its private brief, reports
    whether its hidden concern came out and was handled. This is the closest
    thing we have to ground truth, because only the buyer knows the secret.
-3. Judge: a separate model scores the transcript against rubric.yaml and
+3. Judge: a separate model scores the transcript against the track rubric and
    lists any claims the seller made that the fact sheet doesn't support.
 """
 
@@ -135,6 +135,8 @@ def grade_call(
     judge_model: str,
     rubric: dict,
     judge_effort: str | None = None,
+    *,
+    track: str,
 ) -> dict:
     transcript = format_transcript(call["turns"])
     hidden = loaders.as_yaml(persona["hidden"])
@@ -144,6 +146,7 @@ def grade_call(
         system="You are an honest evaluator stepping out of a role-play.",
         prompt=loaders.render(
             "debrief",
+            track=track,
             persona_public=loaders.as_yaml(persona["public"]),
             persona_hidden=hidden,
             transcript=transcript,
@@ -156,7 +159,8 @@ def grade_call(
         system="You are a strict, fair grader of sales engineering calls.",
         prompt=loaders.render(
             "judge",
-            fact_sheet=loaders.fact_sheet(),
+            track=track,
+            fact_sheet=loaders.fact_sheet(track=track),
             persona_hidden=hidden,
             rubric=loaders.as_yaml(rubric["dimensions"]),
             transcript=transcript,

@@ -29,8 +29,9 @@ def read_labels(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7) -> None:
-    rubric = loaders.load_rubric()
+def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7,
+          *, track: str) -> None:
+    rubric = loaders.load_rubric(track=track)
     dims = rubric["dimensions"]
     existing = read_labels(labels_path)
     done = {r["call_id"] for r in existing if r["labeler"] == labeler}
@@ -48,7 +49,7 @@ def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7)
         if new_file:
             w.writeheader()
         for i, call in enumerate(calls, 1):
-            persona = loaders.load_personas([call["persona"]])[call["persona"]]
+            persona = loaders.load_personas([call["persona"]], track=track)[call["persona"]]
             print("\n" + "=" * 78)
             print(f"Call {i}/{len(calls)}: {call['id']}")
             print(f"Buyer's hidden concern: {persona['hidden']['primary_concern'].strip()}")
@@ -152,7 +153,7 @@ def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
         out += ["", f"Overpromise flag: judge and human agree on {agree:.0%} of {len(ps)} calls."]
     rerun = "scio jev RUN_DIR --force" if judge == "jev" else "scio grade --force"
     out += ["", f"{judge_name} bias above zero means the judge is more generous than you. If a dimension has low "
-            f"agreement, tighten its anchors in rubric.yaml and re-grade with `{rerun}`.", ""]
+            f"agreement, tighten its anchors in the track rubric and re-grade with `{rerun}`.", ""]
     text = "\n".join(out)
     (run_dir / "calibration.md").write_text(text, encoding="utf-8")
     return text

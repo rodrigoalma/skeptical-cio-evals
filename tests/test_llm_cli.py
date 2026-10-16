@@ -455,7 +455,8 @@ def test_backend_validation_and_mock_remains_unchanged(monkeypatch):
 
 def test_api_fingerprints_keep_their_old_shape_and_subscription_is_separate():
     cfg = loaders.load_config()
-    api_sim = fingerprint.record(cfg, ["bank_cio"], ["coached"])
+    track = loaders.track_of(cfg)
+    api_sim = fingerprint.record(cfg, ["bank_cio"], ["coached"], track=track)
     legacy_sim_settings = {
         "buyer_model": cfg["models"][cfg["roles"]["buyer"]],
         "buyer_effort": cfg["effort"]["buyer"],
@@ -463,7 +464,8 @@ def test_api_fingerprints_keep_their_old_shape_and_subscription_is_separate():
         "max_tokens_per_turn": cfg["run"]["max_tokens_per_turn"],
     }
     assert api_sim["settings"] == legacy_sim_settings
-    api_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND)
+    api_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND,
+                                   track=track)
     legacy_grade_settings = {"judge_model": "judge", "judge_effort": "high", "debrief_model": "buyer"}
     assert api_grade["settings"] == legacy_grade_settings
     assert fingerprint.version(api_sim, api_grade) == fingerprint.short_hash({
@@ -472,10 +474,11 @@ def test_api_fingerprints_keep_their_old_shape_and_subscription_is_separate():
     })
 
     subscription_cfg = {**cfg, "backend": "subscription"}
-    subscription_sim = fingerprint.record(subscription_cfg, ["bank_cio"], ["coached"])
+    subscription_sim = fingerprint.record(subscription_cfg, ["bank_cio"], ["coached"], track=track)
     assert subscription_sim["settings"]["backend"] == "subscription"
     assert fingerprint.differences(api_sim, subscription_sim) == ["backend"]
-    subscription_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, "subscription")
+    subscription_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, "subscription",
+                                             track=track)
     assert subscription_grade["settings"]["backend"] == "subscription"
     assert fingerprint.version(api_sim, api_grade) != fingerprint.version(subscription_sim, subscription_grade)
     assert fingerprint.differences(subscription_sim, api_sim) == ["backend"]
@@ -484,7 +487,8 @@ def test_api_fingerprints_keep_their_old_shape_and_subscription_is_separate():
 def test_resume_refuses_a_backend_change(tmp_path):
     api_cfg = loaders.load_config()
     run_dir = tmp_path / "run"
-    runner.write_run_meta(api_cfg, run_dir, mock=True)
+    track = loaders.track_of(api_cfg)
+    runner.write_run_meta(api_cfg, run_dir, mock=True, track=track)
     subscription_cfg = {**api_cfg, "backend": "subscription"}
     with pytest.raises(SystemExit, match="backend"):
-        runner.write_run_meta(subscription_cfg, run_dir, mock=True)
+        runner.write_run_meta(subscription_cfg, run_dir, mock=True, track=track)

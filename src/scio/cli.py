@@ -40,6 +40,13 @@ def _check_backend(backend: str) -> None:
         sys.exit(f"Unknown backend {backend!r}. Use one of: {', '.join(BACKENDS)}")
 
 
+def _check_track(track: str) -> None:
+    try:
+        loaders.track_root(track=track)
+    except ValueError as error:
+        sys.exit(str(error))
+
+
 def _check_key(mock: bool, backend: str) -> None:
     _check_backend(backend)
     if mock:
@@ -62,6 +69,8 @@ def _check_efforts(cfg: dict, roles=("buyer", "judge"), seller: bool = True) -> 
 def _apply_overrides(cfg: dict, args) -> dict:
     r = cfg["run"]
     cfg["backend"] = backend_of(cfg)
+    cfg["track"] = args.track or loaders.track_of(cfg)
+    _check_track(cfg["track"])
     if args.backend:
         cfg["backend"] = args.backend
     _check_backend(cfg["backend"])
@@ -85,36 +94,43 @@ def _apply_overrides(cfg: dict, args) -> dict:
     unknown = [m for m in r["seller_models"] + [cfg["roles"]["judge"], cfg["roles"]["buyer"]] if m not in cfg["models"]]
     if unknown:
         sys.exit(f"Unknown model name(s): {', '.join(unknown)}. Defined in config.yaml: {', '.join(cfg['models'])}")
-    bad_prompts = [p for p in r["seller_prompts"] if p not in loaders.seller_prompt_names()]
+    bad_prompts = [p for p in r["seller_prompts"] if p not in loaders.seller_prompt_names(track=cfg["track"])]
     if bad_prompts:
-        sys.exit(f"No prompts/seller_<name>.md for: {', '.join(bad_prompts)}")
+        sys.exit(f"No seller prompt for: {', '.join(bad_prompts)}")
     _check_efforts(cfg)
     return cfg
 
 
 def _estimate(cfg: dict) -> int:
     r = cfg["run"]
-    n_personas = len(loaders.load_personas(r["personas"]))
+    n_personas = len(loaders.load_personas(r["personas"], track=loaders.track_of(cfg)))
     return n_personas * len(r["seller_models"]) * len(r["seller_prompts"]) * len(r["seller_efforts"]) * r["trials"]
 
 
 def cmd_run(args) -> None:
     cfg = loaders.load_config()
-    if args.resume and not args.backend:
-        cfg["backend"] = backend_of(_meta_cfg(Path(args.resume))[0])
+    if args.resume:
+        saved_cfg, _ = _meta_cfg(Path(args.resume))
+        saved_track = loaders.track_of(saved_cfg)
+        if args.track and args.track != saved_track:
+            sys.exit(f"Can't resume {Path(args.resume).name}: track changed from {saved_track!r} to {args.track!r}.")
+        cfg["track"] = saved_track
+        if not args.backend:
+            cfg["backend"] = backend_of(saved_cfg)
     cfg = _apply_overrides(cfg, args)
     _check_key(args.mock, cfg["backend"])
     run_dir = Path(args.resume) if args.resume else runner.new_run_dir(RESULTS, args.mock)
     run_dir.mkdir(parents=True, exist_ok=True)
-    runner.write_run_meta(cfg, run_dir, args.mock)
+    track = loaders.track_of(cfg)
+    runner.write_run_meta(cfg, run_dir, args.mock, track=track)
     print(f"Run folder: {run_dir}")
     print(f"{_estimate(cfg)} calls planned.")
     llm = make_llm(args.mock, cfg["backend"])
-    runner.simulate_all(llm, cfg, run_dir)
+    runner.simulate_all(llm, cfg, run_dir, track=track)
     if args.no_grade:
         return
-    runner.grade_all(llm, cfg, run_dir)
-    path = report.build(run_dir, cfg)
+    runner.grade_all(llm, cfg, run_dir, track=track)
+    path = report.build(run_dir, track=track, cfg=cfg)
     print(f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
           "\nRun `scio dashboard` to update the one across all runs.")
 
@@ -129,14 +145,17 @@ def _meta_cfg(run_dir: Path) -> tuple[dict, bool]:
 def cmd_grade(args) -> None:
     run_dir = Path(args.run_dir)
     cfg, mock = _meta_cfg(run_dir)
+    cfg["track"] = args.track or loaders.track_of(cfg)
+    _check_track(cfg["track"])
     cfg["backend"] = args.backend or backend_of(cfg)
     _check_backend(cfg["backend"])
     if args.judge:
         cfg["roles"]["judge"] = args.judge
     _check_efforts(cfg, roles=("judge",), seller=False)
     _check_key(mock, cfg["backend"])
-    runner.grade_all(make_llm(mock, cfg["backend"]), cfg, run_dir, force=args.force)
-    print(f"Report: {report.build(run_dir, cfg)}")
+    track = loaders.track_of(cfg)
+    runner.grade_all(make_llm(mock, cfg["backend"]), cfg, run_dir, force=args.force, track=track)
+    print(f"Report: {report.build(run_dir, track=track, cfg=cfg)}")
 
 
 def cmd_jev(args) -> None:
@@ -144,12 +163,18 @@ def cmd_jev(args) -> None:
         sys.exit("TYPESAFE_API_KEY is not set. Export it before running `scio jev`.")
     run_dir = Path(args.run_dir)
     cfg, _ = _meta_cfg(run_dir)
-    runner.jev_all(cfg, run_dir, force=args.force)
-    print(f"Report: {report.build(run_dir, cfg)}")
+    track = loaders.track_of(cfg)
+    _check_track(track)
+    runner.jev_all(cfg, run_dir, force=args.force, track=track)
+    print(f"Report: {report.build(run_dir, track=track, cfg=cfg)}")
 
 
 def cmd_report(args) -> None:
-    print(f"Report: {report.build(Path(args.run_dir))}")
+    run_dir = Path(args.run_dir)
+    cfg, _ = _meta_cfg(run_dir)
+    track = loaders.track_of(cfg)
+    _check_track(track)
+    print(f"Report: {report.build(run_dir, track=track, cfg=cfg)}")
 
 
 def cmd_dashboard(args) -> None:
@@ -160,28 +185,39 @@ def cmd_dashboard(args) -> None:
 
 
 def cmd_label(args) -> None:
-    cal.label(Path(args.run_dir), Path(args.labels), args.n, args.labeler)
+    cfg, _ = _meta_cfg(Path(args.run_dir))
+    track = loaders.track_of(cfg)
+    _check_track(track)
+    cal.label(Path(args.run_dir), Path(args.labels), args.n, args.labeler, track=track)
 
 
 def cmd_calibrate(args) -> None:
     run_dir = Path(args.run_dir)
+    cfg, _ = _meta_cfg(run_dir)
+    track = loaders.track_of(cfg)
+    _check_track(track)
     print(cal.calibrate(run_dir, Path(args.labels), judge=args.judge))
-    report.build(run_dir)
+    report.build(run_dir, track=track, cfg=cfg)
 
 
 def cmd_smoke(args) -> None:
     cfg = loaders.load_config()
+    cfg["track"] = args.track or loaders.track_of(cfg)
+    _check_track(cfg["track"])
     cfg["backend"] = args.backend or backend_of(cfg)
     _check_key(args.mock, cfg["backend"])
     if args.judge:
         cfg["roles"]["judge"] = args.judge
     _check_efforts(cfg, roles=("judge",), seller=False)
-    ok = smoke.run(make_llm(args.mock, cfg["backend"]), cfg)
+    ok = smoke.run(make_llm(args.mock, cfg["backend"]), cfg, track=cfg["track"])
     sys.exit(0 if ok else 1)
 
 
 def cmd_personas(args) -> None:
-    for pid, p in loaders.load_personas().items():
+    cfg = loaders.load_config()
+    track = args.track or loaders.track_of(cfg)
+    _check_track(track)
+    for pid, p in loaders.load_personas(track=track).items():
         pub = p["public"]
         print(f"{pid:20} {p.get('difficulty', ''):7} {pub['name']}, {pub['title']}, {pub['company']}")
 
@@ -195,6 +231,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--judge", help="Model name for the judge")
     p.add_argument("--mock", action="store_true", help="Offline mock model, no API calls")
     p.add_argument("--backend", choices=BACKENDS, help="Model backend from config.yaml")
+    p.add_argument("--track", choices=loaders.available_tracks(), help="Scenario track from config.yaml")
     p.set_defaults(fn=cmd_smoke)
 
     p = sub.add_parser("run", help="Simulate, grade and report.")
@@ -208,6 +245,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--buyer", help="Model name for the buyer")
     p.add_argument("--mock", action="store_true", help="Offline mock model, no API calls")
     p.add_argument("--backend", choices=BACKENDS, help="Model backend from config.yaml")
+    p.add_argument("--track", choices=loaders.available_tracks(), help="Scenario track from config.yaml")
     p.add_argument("--resume", help="Existing run folder to continue")
     p.add_argument("--no-grade", action="store_true", help="Only simulate")
     p.set_defaults(fn=cmd_run)
@@ -217,6 +255,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--force", action="store_true", help="Re-grade calls that already have grades")
     p.add_argument("--judge", help="Override the judge model")
     p.add_argument("--backend", choices=BACKENDS, help="Override the backend saved with the run")
+    p.add_argument("--track", choices=loaders.available_tracks(), help="Override the track saved with the run")
     p.set_defaults(fn=cmd_grade)
 
     p = sub.add_parser("jev", help="Run Jev as a shadow judge for a run.")
@@ -248,6 +287,7 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(fn=cmd_calibrate)
 
     p = sub.add_parser("personas", help="List buyer personas.")
+    p.add_argument("--track", choices=loaders.available_tracks(), help="Scenario track from config.yaml")
     p.set_defaults(fn=cmd_personas)
 
     args = ap.parse_args(argv)

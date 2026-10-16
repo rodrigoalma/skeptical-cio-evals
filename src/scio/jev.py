@@ -33,9 +33,9 @@ def _question_specs(rubric: dict) -> dict:
     return questions
 
 
-def build_state(call: dict, persona: dict) -> dict:
+def build_state(call: dict, persona: dict, *, track: str) -> dict:
     return {
-        "fact_sheet": loaders.fact_sheet(),
+        "fact_sheet": loaders.fact_sheet(track=track),
         "persona_hidden_brief": persona["hidden"],
         "transcript": [{"speaker": turn["speaker"], "text": turn["text"]} for turn in call["turns"]],
     }
@@ -69,8 +69,8 @@ def _account_failure(error: TypeSafeAPIError) -> AccountError | None:
     return AccountError(kind, str(error)) if kind else None
 
 
-def grade_call(call: dict, persona: dict, rubric: dict) -> dict:
-    state = build_state(call, persona)
+def grade_call(call: dict, persona: dict, rubric: dict, *, track: str) -> dict:
+    state = build_state(call, persona, track=track)
     specs = _question_specs(rubric)
     questions = _questions(specs)
     started = perf_counter()
@@ -107,7 +107,7 @@ def grade_call(call: dict, persona: dict, rubric: dict) -> dict:
         "model": model,
         "usage": usage,
         "seconds": round(perf_counter() - started, 2),
-        "fingerprint": fingerprint.jev_grading(rubric, fact_sheet, specs, model),
+        "fingerprint": fingerprint.jev_grading(rubric, fact_sheet, specs, model, track=track),
     }
 
 

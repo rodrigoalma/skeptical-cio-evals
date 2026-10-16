@@ -10,6 +10,8 @@ models:
 # Costs shown in reports are API-equivalent estimates from pricing.
 backend: api
 
+track: sales # Scenario files for sales live at the repo root.
+
 # Which model plays each role. Keep the buyer and judge fixed while you
 # compare sellers, otherwise you're changing two things at once.
 roles:

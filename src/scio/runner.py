@@ -45,10 +45,10 @@ def load_calls(run_dir: Path) -> list[dict]:
     return [json.loads(p.read_text(encoding="utf-8")) for p in sorted((run_dir / "calls").glob("*.json"))]
 
 
-def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
+def simulate_all(llm: LLM, cfg: dict, run_dir: Path, *, track: str, log=print) -> None:
     r = cfg["run"]
     models = cfg["models"]
-    personas = loaders.load_personas(r["personas"])
+    personas = loaders.load_personas(r["personas"], track=track)
     buyer_model = models[cfg["roles"]["buyer"]]
 
     jobs = []
@@ -79,6 +79,7 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
             max_tokens=r["max_tokens_per_turn"],
             seller_effort=effort,
             buyer_effort=cfg["effort"]["buyer"],
+            track=track,
         )
         call["id"] = cid
         call["seller_model_name"] = m
@@ -88,9 +89,9 @@ def simulate_all(llm: LLM, cfg: dict, run_dir: Path, log=print) -> None:
     _parallel(work, jobs, r["workers"], log, run_dir, "simulate")
 
 
-def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print) -> None:
-    rubric = loaders.load_rubric()
-    personas = loaders.load_personas("all")
+def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print, *, track: str) -> None:
+    rubric = loaders.load_rubric(track=track)
+    personas = loaders.load_personas("all", track=track)
     models = cfg["models"]
     buyer_model = models[cfg["roles"]["buyer"]]
     judge_model = models[cfg["roles"]["judge"]]
@@ -102,14 +103,16 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
             jobs.append((path, call))
 
     log(f"Grading {len(jobs)} calls (judge: {judge_model})...")
-    grade_fp = fingerprint.grading(judge_model, cfg["effort"]["judge"], buyer_model, fingerprint.grading_files(),
-                                   backend_of(cfg))
+    grade_fp = fingerprint.grading(
+        judge_model, cfg["effort"]["judge"], buyer_model,
+        fingerprint.grading_files(track=track), backend_of(cfg), track=track,
+    )
 
     def work(job):
         path, call = job
         call["grade"] = grade_call(
             call, personas[call["persona"]], llm, buyer_model, judge_model, rubric,
-            judge_effort=cfg["effort"]["judge"],
+            judge_effort=cfg["effort"]["judge"], track=track,
         )
         call["grade"]["judge_model"] = judge_model
         call["grade"]["judge_effort"] = cfg["effort"]["judge"]
@@ -120,9 +123,9 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
     _parallel(work, jobs, cfg["run"]["workers"], log, run_dir, "grade")
 
 
-def jev_all(cfg: dict, run_dir: Path, force: bool = False, log=print) -> None:
-    rubric = loaders.load_rubric()
-    personas = loaders.load_personas("all")
+def jev_all(cfg: dict, run_dir: Path, force: bool = False, log=print, *, track: str) -> None:
+    rubric = loaders.load_rubric(track=track)
+    personas = loaders.load_personas("all", track=track)
     jobs = []
     for path in sorted((run_dir / "calls").glob("*.json")):
         call = json.loads(path.read_text(encoding="utf-8"))
@@ -133,7 +136,7 @@ def jev_all(cfg: dict, run_dir: Path, force: bool = False, log=print) -> None:
 
     def work(job):
         path, call = job
-        call["jev"] = jev.grade_call(call, personas[call["persona"]], rubric)
+        call["jev"] = jev.grade_call(call, personas[call["persona"]], rubric, track=track)
         _save(path, call)
         return call["id"]
 
@@ -179,8 +182,9 @@ def _parallel(fn, jobs, workers, log, run_dir: Path, stage: str) -> None:
         log(f"{failed} failed (see errors.jsonl). Run the same command again to retry just those.")
 
 
-def write_run_meta(cfg: dict, run_dir: Path, mock: bool) -> None:
-    fp = fingerprint.record(cfg, loaders.load_personas(cfg["run"]["personas"]), cfg["run"]["seller_prompts"])
+def write_run_meta(cfg: dict, run_dir: Path, mock: bool, *, track: str) -> None:
+    fp = fingerprint.record(cfg, loaders.load_personas(cfg["run"]["personas"], track=track),
+                            cfg["run"]["seller_prompts"], track=track)
     meta_path = run_dir / "run.json"
     if not meta_path.exists():
         _save(meta_path, {"created": datetime.now().isoformat(timespec="seconds"), "mock": mock, "config": cfg,

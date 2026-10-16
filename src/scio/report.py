@@ -68,11 +68,11 @@ def _avg(xs, fmt="{:.2f}") -> str:
     return fmt.format(mean(xs)) if xs else "-"
 
 
-def build(run_dir: Path, cfg: dict | None = None) -> Path:
+def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     cfg = cfg or meta["config"]
     pricing = cfg["pricing"]
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=track)
     dims = list(rubric["dimensions"])
 
     calls = [c for c in load_calls(run_dir) if "grade" in c]

@@ -59,13 +59,18 @@ def _label_variants(rows: list[dict], field: str, hashes: dict[tuple, str]) -> N
 def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
     rows, runs, versions = [], [], {}
     persona_h, prompt_h = {}, {}
+    dimensions = []
     for run_dir in run_dirs:
         meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
         calls = [c for c in load_calls(run_dir) if "grade" in c]
         if not calls:
             continue
         cfg = meta["config"]
-        fp = fingerprint.for_run(run_dir, meta, calls, use_git)
+        track = loaders.track_of(cfg)
+        for dimension in loaders.load_rubric(track=track)["dimensions"]:
+            if dimension not in dimensions:
+                dimensions.append(dimension)
+        fp = fingerprint.for_run(run_dir, meta, calls, use_git, track=track)
         run = run_dir.name
         models = cfg["models"]
         effort = cfg.get("effort") or {}
@@ -80,7 +85,7 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
                 prompt_h[(run, p)] = h
         for c in calls:
             if fp:
-                ver = fingerprint.call_version(fp, c, cfg)
+                ver = fingerprint.call_version(fp, c, cfg, track=track)
                 g = c["grade"]
                 files = {**fp["files"], **((g.get("fingerprint") or {}).get("files") or fp.get("grading_files") or {})}
                 settings = {**fp["settings"],
@@ -113,12 +118,13 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
             + [k for k in v["settings"] if prev and prev["settings"].get(k) != v["settings"][k]]
         ) if prev else None
 
-    rubric = loaders.load_rubric()
+    if not dimensions:
+        dimensions = list(loaders.load_rubric(track=loaders.track_of(loaders.load_config()))["dimensions"])
     return {
         "runs": runs,
         "versions": ordered,
         "rows": rows,
-        "dims": list(rubric["dimensions"]),
+        "dims": dimensions,
         "models": list(loaders.load_config()["models"]),
         "efforts": loaders.EFFORTS,
     }

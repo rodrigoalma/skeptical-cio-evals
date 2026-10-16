@@ -42,14 +42,18 @@ def run_call(
     max_tokens: int = 4000,
     seller_effort: str | None = None,
     buyer_effort: str | None = None,
+    *,
+    track: str,
 ) -> dict:
     seller_system = loaders.render(
         f"seller_{seller_prompt}",
-        fact_sheet=loaders.fact_sheet(),
+        track=track,
+        fact_sheet=loaders.fact_sheet(track=track),
         account_brief=loaders.account_brief(persona),
     )
     buyer_system = loaders.render(
         "buyer",
+        track=track,
         persona_public=loaders.as_yaml(persona["public"]),
         persona_hidden=loaders.as_yaml(persona["hidden"]),
     )

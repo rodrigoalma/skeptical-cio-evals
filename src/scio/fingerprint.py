@@ -23,9 +23,9 @@ import yaml
 from . import loaders
 from .llm import DEFAULT_BACKEND, backend_of
 
-SIM_FILES = ["data/fact_sheet.md", "prompts/buyer.md"]
+SIM_FILES = ("fact_sheet", "buyer_prompt")
 # The judge grades honesty against the fact sheet, so it counts for grading too.
-GRADE_FILES = ["data/fact_sheet.md", "rubric.yaml", "prompts/judge.md", "prompts/debrief.md"]
+GRADE_FILES = ("fact_sheet", "rubric", "judge_prompt", "debrief_prompt")
 
 Reader = Callable[[str], str]
 
@@ -42,10 +42,20 @@ def _read_disk(rel: str) -> str:
     return (loaders.ROOT / rel).read_text(encoding="utf-8")
 
 
-def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], read: Reader = _read_disk) -> dict:
+def _hash_files(kinds: tuple[str, ...], *, track: str, read: Reader) -> dict[str, str]:
+    return {
+        path.as_posix(): file_hash(read(path.as_posix()))
+        for kind in kinds
+        for path in [loaders.track_file_path(kind, track=track)]
+    }
+
+
+def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], *, track: str,
+               read: Reader | None = None) -> dict:
     """prompt_files maps the prompt's name to its file stem, which differ only
     for runs saved before the basic/coached rename."""
     r = cfg["run"]
+    read_file = read or _read_disk
     settings = {
         "buyer_model": cfg["models"][cfg["roles"]["buyer"]],
         "buyer_effort": (cfg.get("effort") or {}).get("buyer"),
@@ -55,52 +65,67 @@ def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], read: Reade
     backend = backend_of(cfg)
     if backend != DEFAULT_BACKEND:
         settings["backend"] = backend
+    if track != loaders.DEFAULT_TRACK:
+        settings["track"] = track
     return {
-        "files": {f: file_hash(read(f)) for f in SIM_FILES},
+        "files": _hash_files(SIM_FILES, track=track, read=read_file),
         "settings": settings,
-        "personas": {p: file_hash(read(f"data/personas/{p}.yaml")) for p in sorted(persona_ids)},
-        "seller_prompts": {n: file_hash(read(f"prompts/seller_{stem}.md")) for n, stem in sorted(prompt_files.items())},
+        "personas": {
+            p: file_hash(read_file(loaders.track_file_path("persona", p, track=track).as_posix()))
+            for p in sorted(persona_ids)
+        },
+        "seller_prompts": {
+            n: file_hash(read_file(loaders.track_file_path("seller_prompt", stem, track=track).as_posix()))
+            for n, stem in sorted(prompt_files.items())
+        },
     }
 
 
-def grading_files(read: Reader = _read_disk) -> dict:
-    return {f: file_hash(read(f)) for f in GRADE_FILES}
+def grading_files(*, track: str, read: Reader | None = None) -> dict:
+    return _hash_files(GRADE_FILES, track=track, read=read or _read_disk)
 
 
-def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backend: str) -> dict:
+def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backend: str,
+            *, track: str) -> dict:
     # The buyer model also writes the debrief, so it is part of grading.
     settings = {"judge_model": judge_model, "judge_effort": judge_effort, "debrief_model": buyer_model}
     if backend != DEFAULT_BACKEND:
         settings["backend"] = backend
+    if track != loaders.DEFAULT_TRACK:
+        settings["track"] = track
     return {"files": files, "settings": settings}
 
 
-def jev_grading(rubric: dict, fact_sheet: str, questions: dict, model: str) -> dict:
+def jev_grading(rubric: dict, fact_sheet: str, questions: dict, model: str,
+                *, track: str) -> dict:
     """Fingerprint the inputs that determine a Jev shadow grade."""
-    return {
+    fingerprint = {
         "rubric": short_hash(rubric),
         "fact_sheet": file_hash(fact_sheet),
         "judge_questions": short_hash(questions),
         "model": model,
     }
+    if track != loaders.DEFAULT_TRACK:
+        fingerprint["track"] = track
+    return fingerprint
 
 
 def version(sim: dict, grade: dict) -> str:
     return short_hash({"simulation": {"files": sim["files"], "settings": sim["settings"]}, "grading": grade})
 
 
-def git_state() -> dict | None:
+def git_state(*, track: str) -> dict | None:
     try:
         commit = _git("rev-parse", "HEAD").strip()
-        dirty = _git("status", "--porcelain", "--", "data", "prompts", "rubric.yaml").strip()
+        dirty = _git("status", "--porcelain", "--", *loaders.track_git_paths(track=track)).strip()
     except (OSError, subprocess.CalledProcessError):
         return None
     return {"commit": commit, "dirty": bool(dirty)}
 
 
-def record(cfg: dict, persona_ids, prompt_names) -> dict:
-    fp = simulation(cfg, persona_ids, {n: n for n in prompt_names})
-    return {**fp, "source": "recorded", "git": git_state()}
+def record(cfg: dict, persona_ids, prompt_names, *, track: str) -> dict:
+    fp = simulation(cfg, persona_ids, {n: n for n in prompt_names}, track=track)
+    return {**fp, "source": "recorded", "git": git_state(track=track)}
 
 
 def differences(old: dict, new: dict) -> list[str]:
@@ -111,8 +136,13 @@ def differences(old: dict, new: dict) -> list[str]:
     if (backend_of(old["settings"]) != backend_of(new["settings"])
             and "backend" not in out):
         out.append("backend")
-    for group, path in (("personas", "data/personas/{}.yaml"), ("seller_prompts", "prompts/seller_{}.md")):
-        out += [path.format(k) for k in old[group] if k in new[group] and old[group][k] != new[group][k]]
+    old_track = loaders.track_of(old["settings"])
+    new_track = loaders.track_of(new["settings"])
+    if old_track != new_track and "track" not in out:
+        out.append("track")
+    for group, kind in (("personas", "persona"), ("seller_prompts", "seller_prompt")):
+        out += [loaders.track_file_path(kind, k, track=new_track).as_posix()
+                for k in old[group] if k in new[group] and old[group][k] != new[group][k]]
     return out
 
 
@@ -128,13 +158,16 @@ def _git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=loaders.ROOT, capture_output=True, text=True, check=True).stdout
 
 
-def from_git(meta: dict, calls: list[dict]) -> dict | None:
+def from_git(meta: dict, calls: list[dict], *, track: str) -> dict | None:
     """Fingerprint a run from before fingerprints, using the files in the last
     commit before it started. Returns None when git can't tell."""
     created = meta.get("created")
     if not created or not calls:
         return None
     try:
+        cfg = meta["config"]
+        if track != loaders.DEFAULT_TRACK or loaders.track_of(cfg) != loaders.DEFAULT_TRACK:
+            return None
         # A date with no timezone is read in this machine's timezone, which is
         # how run.json saved it.
         commit = _git("log", "-1", "--format=%H", f"--before={created}", "HEAD").strip()
@@ -144,11 +177,10 @@ def from_git(meta: dict, calls: list[dict]) -> dict | None:
         def read(rel: str) -> str:
             return _git("show", f"{commit}:{rel}")
 
-        cfg = meta["config"]
         prompts = {loaders.prompt_name(c["seller_prompt"]): c["seller_prompt"] for c in calls}
-        fp = simulation(cfg, {c["persona"] for c in calls}, prompts, read)
-        files = grading_files(read)
-        openings = {p: yaml.safe_load(read(f"data/personas/{p}.yaml"))["hidden"]["opening_line"].strip()
+        fp = simulation(cfg, {c["persona"] for c in calls}, prompts, track=loaders.DEFAULT_TRACK, read=read)
+        files = grading_files(track=loaders.DEFAULT_TRACK, read=read)
+        openings = {p: yaml.safe_load(read(loaders.track_file_path("persona", p, track=track).as_posix()))["hidden"]["opening_line"].strip()
                     for p in fp["personas"]}
     except (OSError, subprocess.CalledProcessError, KeyError, TypeError, yaml.YAMLError):
         return None
@@ -159,13 +191,13 @@ def from_git(meta: dict, calls: list[dict]) -> dict | None:
             "check": {"opening_lines_mismatch": mismatched}}
 
 
-def for_run(run_dir: Path, meta: dict, calls: list[dict], use_git: bool = True) -> dict | None:
+def for_run(run_dir: Path, meta: dict, calls: list[dict], use_git: bool = True, *, track: str) -> dict | None:
     """The run's fingerprint, filling it in from git (and saving it) for old runs."""
     if meta.get("fingerprint"):
         return meta["fingerprint"]
     if not use_git or meta.get("mock"):
         return None
-    fp = from_git(meta, calls)
+    fp = from_git(meta, calls, track=track)
     if fp:
         meta["fingerprint"] = fp
         tmp = run_dir / "run.json.tmp"
@@ -174,7 +206,7 @@ def for_run(run_dir: Path, meta: dict, calls: list[dict], use_git: bool = True) 
     return fp
 
 
-def call_version(fp: dict, call: dict, cfg: dict) -> str:
+def call_version(fp: dict, call: dict, cfg: dict, *, track: str) -> str:
     g = call.get("grade") or {}
     if g.get("fingerprint"):
         grade = g["fingerprint"]
@@ -182,5 +214,6 @@ def call_version(fp: dict, call: dict, cfg: dict) -> str:
         models = cfg["models"]
         grade = grading(g.get("judge_model") or models[cfg["roles"]["judge"]],
                         g.get("judge_effort") or (cfg.get("effort") or {}).get("judge"),
-                        models[cfg["roles"]["buyer"]], fp.get("grading_files") or {}, backend_of(cfg))
+                        models[cfg["roles"]["buyer"]], fp.get("grading_files") or {}, backend_of(cfg),
+                        track=track)
     return version(fp, grade)

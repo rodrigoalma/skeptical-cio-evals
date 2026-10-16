@@ -22,7 +22,7 @@ from scio.simulate import _view, run_call
 
 
 def test_personas_have_required_fields():
-    personas = loaders.load_personas()
+    personas = loaders.load_personas(track=loaders.DEFAULT_TRACK)
     assert len(personas) >= 5
     for p in personas.values():
         for key in ("name", "title", "company", "company_profile"):
@@ -32,14 +32,15 @@ def test_personas_have_required_fields():
 
 
 def test_seller_never_sees_hidden_brief():
-    for p in loaders.load_personas().values():
-        for name in loaders.seller_prompt_names():
-            system = loaders.render(f"seller_{name}", fact_sheet="FS", account_brief=loaders.account_brief(p))
+    for p in loaders.load_personas(track=loaders.DEFAULT_TRACK).values():
+        for name in loaders.seller_prompt_names(track=loaders.DEFAULT_TRACK):
+            system = loaders.render(f"seller_{name}", track=loaders.DEFAULT_TRACK,
+                                    fact_sheet="FS", account_brief=loaders.account_brief(p))
             assert p["hidden"]["primary_concern"].strip()[:60] not in system
 
 
 def test_rubric_weights_sum_to_one():
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=loaders.DEFAULT_TRACK)
     assert abs(sum(d["weight"] for d in rubric["dimensions"].values()) - 1.0) < 1e-9
     for d in rubric["dimensions"].values():
         assert set(d["anchors"]) == {1, 2, 3, 4, 5}
@@ -168,8 +169,9 @@ def test_message_views_alternate_and_start_with_user():
 
 
 def test_mock_call_ends_and_records_usage():
-    p = loaders.load_personas(["bank_cio"])["bank_cio"]
-    call = run_call(MockLLM(), p, "coached", "claude-haiku-5-5", "claude-sonnet-5-5", max_seller_turns=8)
+    p = loaders.load_personas(["bank_cio"], track=loaders.DEFAULT_TRACK)["bank_cio"]
+    call = run_call(MockLLM(), p, "coached", "claude-haiku-5-5", "claude-sonnet-5-5",
+                    max_seller_turns=8, track=loaders.DEFAULT_TRACK)
     assert call["ended_by"] == "buyer"
     assert call["turns"][0]["speaker"] == "buyer"
     assert len(call["usage"]["seller"]) == sum(t["speaker"] == "seller" for t in call["turns"])
@@ -193,7 +195,7 @@ def test_code_metrics():
 
 
 def test_pass_logic():
-    rubric = loaders.load_rubric()
+    rubric = loaders.load_rubric(track=loaders.DEFAULT_TRACK)
     good = {k: 4 for k in rubric["dimensions"]}
     s = weighted_score(good, rubric)
     debrief = {"hidden_concern_surfaced": True, "hidden_concern_addressed": True}
@@ -212,11 +214,12 @@ def test_full_mock_run(tmp_path):
     cfg["run"].update(personas="bank_cio,latam_si_lead", seller_models=["haiku"], seller_prompts=["basic", "coached"],
                       seller_efforts=["medium"], trials=1)
     run_dir = tmp_path / "run"
-    runner.write_run_meta(cfg, run_dir, mock=True)
+    track = loaders.track_of(cfg)
+    runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     llm = MockLLM()
     quiet = lambda *a: None
-    runner.simulate_all(llm, cfg, run_dir, log=quiet)
-    runner.grade_all(llm, cfg, run_dir, log=quiet)
+    runner.simulate_all(llm, cfg, run_dir, track=track, log=quiet)
+    runner.grade_all(llm, cfg, run_dir, track=track, log=quiet)
     calls = runner.load_calls(run_dir)
     assert len(calls) == 4 and all("grade" in c for c in calls)
 
@@ -229,7 +232,7 @@ def test_full_mock_run(tmp_path):
     meta["config"].pop("cache_write_multipliers")
     meta_path.write_text(json.dumps(meta), encoding="utf-8")
 
-    path = report.build(run_dir)
+    path = report.build(run_dir, track=track)
     text = path.read_text()
     assert "Mock run" in text and "| haiku | coached | medium |" in text
     assert "Estimated billed with prompt caching:" in text
@@ -245,19 +248,20 @@ def test_full_mock_run(tmp_path):
     assert "discovery" in out
 
     # Re-running skips calls already on disk
-    runner.simulate_all(llm, cfg, run_dir, log=quiet)
+    runner.simulate_all(llm, cfg, run_dir, track=track, log=quiet)
     assert len(runner.load_calls(run_dir)) == 4
 
 
 def test_smoke_cases_load_and_grade_offline():
     from scio import smoke
-    cases = smoke.load_cases()
+    cases = smoke.load_cases(track=loaders.DEFAULT_TRACK)
     assert {c["id"] for c in cases} >= {"strong_discovery", "feature_monologue", "overpromise"}
     for c in cases:
         assert c["turns"][0]["speaker"] == "buyer"
         assert all(t["speaker"] in ("buyer", "seller") for t in c["turns"])
     # The mock can't judge, so we only check the plumbing runs.
-    smoke.run(MockLLM(), loaders.load_config(), log=lambda *a: None)
+    cfg = loaders.load_config()
+    smoke.run(MockLLM(), cfg, track=loaders.track_of(cfg), log=lambda *a: None)
 
 
 def test_structured_schemas_are_strict():
@@ -274,7 +278,7 @@ def test_structured_schemas_are_strict():
         assert "minimum" not in s and "maximum" not in s
 
     walk(DEBRIEF_SCHEMA)
-    walk(judge_schema(loaders.load_rubric()))
+    walk(judge_schema(loaders.load_rubric(track=loaders.DEFAULT_TRACK)))
 
 
 def test_auth_error_stops_the_run(tmp_path):
@@ -315,10 +319,12 @@ def test_smoke_reports_a_refusal_and_keeps_going():
             return super().structured(model, system, prompt, schema, max_tokens, effort)
 
     lines = []
-    ok = smoke.run(RefusingJudge(), loaders.load_config(), log=lines.append)
+    cfg = loaders.load_config()
+    track = loaders.track_of(cfg)
+    ok = smoke.run(RefusingJudge(), cfg, track=track, log=lines.append)
     assert not ok
     assert any(l.startswith("[ERR ] strong_discovery") and "refusal" in l for l in lines)
-    assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases()) - 1
+    assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases(track=track)) - 1
 
 
 def test_effort_sweep_is_recorded_and_reported(tmp_path):
@@ -326,10 +332,11 @@ def test_effort_sweep_is_recorded_and_reported(tmp_path):
     cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["coached"],
                       seller_efforts=["high", "low"], trials=1)
     run_dir = tmp_path / "run"
-    runner.write_run_meta(cfg, run_dir, mock=True)
+    track = loaders.track_of(cfg)
+    runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     quiet = lambda *a: None
-    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
-    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
     calls = {c["seller_effort"]: c for c in runner.load_calls(run_dir)}
     assert set(calls) == {"low", "high"}
@@ -338,7 +345,7 @@ def test_effort_sweep_is_recorded_and_reported(tmp_path):
     assert all(u["effort"] == cfg["effort"]["buyer"] for u in calls["low"]["usage"]["buyer"])
     assert calls["low"]["grade"]["judge_effort"] == cfg["effort"]["judge"]
 
-    text = report.build(run_dir, cfg).read_text()
+    text = report.build(run_dir, track=track, cfg=cfg).read_text()
     low, high = text.index("| haiku | coached | low |"), text.index("| haiku | coached | high |")
     assert low < high  # effort levels sort by level, not alphabetically
     assert "seller_effort" in (run_dir / "results.csv").read_text().splitlines()[0]
@@ -364,10 +371,11 @@ def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
     cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["coached"],
                       seller_efforts=["medium"], trials=1)
     run_dir = tmp_path / "run"
-    runner.write_run_meta(cfg, run_dir, mock=True)
+    track = loaders.track_of(cfg)
+    runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     quiet = lambda *a: None
-    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
-    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
     # Make it look like a call saved when the prompt was still called v2.
     new = run_dir / "calls" / "bank_cio__haiku__coached__medium__t1.json"
@@ -376,9 +384,9 @@ def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
     new.unlink()
     (run_dir / "calls" / f"{call['id']}.json").write_text(json.dumps(call))
 
-    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)  # resume finds the old call
+    runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)  # resume finds the old call
     assert [c["id"] for c in runner.load_calls(run_dir)] == ["bank_cio__haiku__v2__medium__t1"]
-    assert "| haiku | coached | medium |" in report.build(run_dir, cfg).read_text()
+    assert "| haiku | coached | medium |" in report.build(run_dir, track=track, cfg=cfg).read_text()
 
 
 def _mock_run(tmp_path, name, **run):
@@ -386,24 +394,28 @@ def _mock_run(tmp_path, name, **run):
     cfg["run"].update({"personas": "bank_cio", "seller_models": ["haiku"], "seller_prompts": ["coached"],
                        "seller_efforts": ["medium"], "trials": 1, **run})
     run_dir = tmp_path / name
-    runner.write_run_meta(cfg, run_dir, mock=True)
+    track = loaders.track_of(cfg)
+    runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     quiet = lambda *a: None
-    runner.simulate_all(MockLLM(), cfg, run_dir, log=quiet)
-    runner.grade_all(MockLLM(), cfg, run_dir, log=quiet)
+    runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
+    runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     return cfg, run_dir
 
 
 def test_fingerprint_is_recorded_and_changes_with_the_test():
     cfg = loaders.load_config()
-    fp = fingerprint.record(cfg, ["bank_cio"], ["coached"])
+    track = loaders.track_of(cfg)
+    fp = fingerprint.record(cfg, ["bank_cio"], ["coached"], track=track)
     assert fp["source"] == "recorded" and set(fp["personas"]) == {"bank_cio"}
-    assert fingerprint.record(cfg, ["bank_cio"], ["coached"])["files"] == fp["files"]
+    assert fingerprint.record(cfg, ["bank_cio"], ["coached"], track=track)["files"] == fp["files"]
 
     # Seller choices are what you compare, so they don't change the version.
-    other = fingerprint.record({**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}}, ["bank_cio"], ["basic"])
+    other = fingerprint.record({**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}},
+                               ["bank_cio"], ["basic"], track=track)
     assert fingerprint.differences(fp, other) == []
 
-    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND)
+    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND,
+                                track=track)
     assert fingerprint.version(fp, judge) != fingerprint.version(fp, {**judge, "files": {"rubric.yaml": "y"}})
     edited = {**fp, "files": {**fp["files"], "data/fact_sheet.md": "changed"}}
     assert fingerprint.differences(fp, edited) == ["data/fact_sheet.md"]
@@ -415,7 +427,7 @@ def test_resume_refuses_a_run_whose_files_changed(tmp_path):
     meta["fingerprint"]["files"]["data/fact_sheet.md"] = "something else"
     (run_dir / "run.json").write_text(json.dumps(meta))
     with pytest.raises(SystemExit, match="fact_sheet"):
-        runner.write_run_meta(cfg, run_dir, mock=True)
+        runner.write_run_meta(cfg, run_dir, mock=True, track=loaders.track_of(cfg))
 
 
 def test_dashboard_pools_runs_on_the_same_version(tmp_path):
