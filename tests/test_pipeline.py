@@ -1,5 +1,6 @@
 """Offline tests. They use the mock model, so no API key is needed."""
 
+import csv
 import json
 import time
 
@@ -226,19 +227,45 @@ def test_full_mock_run(tmp_path):
     calls = runner.load_calls(run_dir)
     assert len(calls) == 4 and all("grade" in c for c in calls)
 
+    current_pricing, current_multipliers = loaders.current_costs()
+    cached_call = calls[0]
+    cached_usage = cached_call["usage"]["seller"][0]
+    cached_usage.update(
+        input_tokens=1_000_000,
+        output_tokens=100_000,
+        cache_read_tokens=20_000,
+        cache_write_5m_tokens=10_000,
+    )
+    (run_dir / "calls" / f"{cached_call['id']}.json").write_text(
+        json.dumps(cached_call), encoding="utf-8"
+    )
+    calls = runner.load_calls(run_dir)
+
     meta_path = run_dir / "run.json"
     meta = json.loads(meta_path.read_text())
-    meta["config"]["pricing"] = {
-        model: [rates["input"], rates["output"]]
-        for model, rates in cfg["pricing"].items()
-    }
+    meta["config"]["pricing"] = {model: [0.0, 0.0] for model in cfg["pricing"]}
     meta["config"].pop("cache_write_multipliers")
     meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+    usages = {
+        "seller": [usage for call in calls for usage in call["usage"]["seller"]],
+        "buyer": [usage for call in calls for usage in call["usage"]["buyer"]],
+        "grading": [usage for call in calls for usage in call["grade"]["grading_usage"].values()],
+    }
+    expected = cost_totals(usages, current_pricing, current_multipliers)
+    expected_seller_cost = round(cost_of(cached_call["usage"]["seller"], current_pricing), 5)
 
     path = report.build(run_dir, track=track)
     text = path.read_text()
     assert "Mock run" in text and "| haiku | coached | medium |" in text
-    assert "Estimated billed with prompt caching:" in text
+    assert "Costs use current config.yaml list prices." in text
+    assert f"Seller ${expected['list_price']['seller']:.2f}" in text
+    assert f"Total ${expected['list_price_total']:.2f}." in text
+    assert f"Estimated billed with prompt caching: ${expected['estimated_billed_total']:.2f}" in text
+    with (run_dir / "results.csv").open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    cached_row = next(row for row in rows if row["id"] == cached_call["id"])
+    assert float(cached_row["seller_cost_usd"]) == expected_seller_cost
     html = (run_dir / "viewer.html").read_text()
     assert "/*__DATA__*/null" not in html
 

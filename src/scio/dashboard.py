@@ -145,6 +145,5 @@ def build_combined(results: Path, include_mock: bool = False, use_git: bool = Tr
     run_dirs = sorted(p.parent for p in results.glob("*/run.json"))
     if not include_mock:
         run_dirs = [d for d in run_dirs if not json.loads((d / "run.json").read_text(encoding="utf-8")).get("mock")]
-    # One price list for every run, so costs compare across runs.
-    pricing = loaders.load_config()["pricing"]
+    pricing, _ = loaders.current_costs()
     return write(results / "dashboard.html", run_dirs, pricing, "All runs", use_git)

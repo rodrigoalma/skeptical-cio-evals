@@ -31,6 +31,12 @@ def load_config(path: Path | None = None) -> dict:
     return cfg
 
 
+def current_costs() -> tuple[dict, dict]:
+    """Use the current price list for comparable costs across saved runs."""
+    cfg = load_config()
+    return cfg["pricing"], cfg["cache_write_multipliers"]
+
+
 def track_of(cfg: dict) -> str:
     return cfg.get("track", DEFAULT_TRACK)
 

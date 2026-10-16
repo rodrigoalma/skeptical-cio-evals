@@ -71,7 +71,7 @@ def _avg(xs, fmt="{:.2f}") -> str:
 def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     cfg = cfg or meta["config"]
-    pricing = cfg["pricing"]
+    pricing, cache_write_multipliers = loaders.current_costs()
     rubric = loaders.load_rubric(track=track)
     dims = list(rubric["dimensions"])
 
@@ -185,9 +185,10 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             "grading": [u for c in calls for u in c["grade"]["grading_usage"].values()],
         },
         pricing,
-        cfg.get("cache_write_multipliers"),
+        cache_write_multipliers,
     )
     lines += ["", "## What this run cost", "",
+              "Costs use current config.yaml list prices.", "",
               f"Seller ${run_costs['list_price']['seller']:.2f}, buyer ${run_costs['list_price']['buyer']:.2f}, "
               f"grading ${run_costs['list_price']['grading']:.2f}. "
               f"Total ${run_costs['list_price_total']:.2f}.",
