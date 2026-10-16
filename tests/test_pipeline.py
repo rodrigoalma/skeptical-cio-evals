@@ -22,28 +22,31 @@ from scio.simulate import _view, run_call
 
 
 def test_personas_have_required_fields():
-    personas = loaders.load_personas(track=loaders.DEFAULT_TRACK)
-    assert len(personas) >= 5
-    for p in personas.values():
-        for key in ("name", "title", "company", "company_profile"):
-            assert p["public"].get(key), f"{p['id']} missing public.{key}"
-        for key in ("opening_line", "primary_concern", "reveals_primary_concern_when", "what_wins_them", "dealbreakers"):
-            assert p["hidden"].get(key), f"{p['id']} missing hidden.{key}"
+    for track in loaders.available_tracks():
+        personas = loaders.load_personas(track=track)
+        assert len(personas) >= 5
+        for p in personas.values():
+            for key in ("name", "title", "company", "company_profile"):
+                assert p["public"].get(key), f"{track}/{p['id']} missing public.{key}"
+            for key in ("opening_line", "primary_concern", "reveals_primary_concern_when", "what_wins_them", "dealbreakers"):
+                assert p["hidden"].get(key), f"{track}/{p['id']} missing hidden.{key}"
 
 
 def test_seller_never_sees_hidden_brief():
-    for p in loaders.load_personas(track=loaders.DEFAULT_TRACK).values():
-        for name in loaders.seller_prompt_names(track=loaders.DEFAULT_TRACK):
-            system = loaders.render(f"seller_{name}", track=loaders.DEFAULT_TRACK,
-                                    fact_sheet="FS", account_brief=loaders.account_brief(p))
-            assert p["hidden"]["primary_concern"].strip()[:60] not in system
+    for track in loaders.available_tracks():
+        for p in loaders.load_personas(track=track).values():
+            for name in loaders.seller_prompt_names(track=track):
+                system = loaders.render(f"seller_{name}", track=track,
+                                        fact_sheet="FS", account_brief=loaders.account_brief(p))
+                assert p["hidden"]["primary_concern"].strip()[:60] not in system
 
 
 def test_rubric_weights_sum_to_one():
-    rubric = loaders.load_rubric(track=loaders.DEFAULT_TRACK)
-    assert abs(sum(d["weight"] for d in rubric["dimensions"].values()) - 1.0) < 1e-9
-    for d in rubric["dimensions"].values():
-        assert set(d["anchors"]) == {1, 2, 3, 4, 5}
+    for track in loaders.available_tracks():
+        rubric = loaders.load_rubric(track=track)
+        assert abs(sum(d["weight"] for d in rubric["dimensions"].values()) - 1.0) < 1e-9
+        for d in rubric["dimensions"].values():
+            assert set(d["anchors"]) == {1, 2, 3, 4, 5}
 
 
 def test_cost_of_owns_usage_cost_calculation_and_normalizes_legacy_pricing():

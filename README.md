@@ -73,6 +73,24 @@ never got to what I actually cared about."
 Each one is a YAML file in `data/personas/`. Adding a new buyer is a matter of
 copying one and editing it.
 
+## The SA track
+
+The SA track simulates the second call: a technical lead and an Applied AI
+solutions architect work through architecture and a proof of concept. It
+focuses on stack, volume, latency, data constraints, evaluation and ownership.
+Use `--track sa` with `scio personas`, `scio smoke` or `scio run`. Its fact
+sheet, rubric, prompts and personas live under `tracks/sa/`, so its test
+versions are fingerprinted separately from sales runs.
+
+| Persona | Who | What they won't tell you up front |
+|---|---|---|
+| `bank_lead_architect` | Lead architect, regional bank | Direct API calls are prohibited; private AWS networking is required. |
+| `insurer_ml_lead` | ML lead, national insurer | Leadership wants an accuracy number, but there is no labeled evaluation set. |
+| `si_tech_lead` | Principal architect, systems integrator | The claims agent depends on a slow SOAP system and peak-hour spikes. |
+| `retail_eng_manager` | Developer platform manager, retailer | Security will not approve code leaving the network and needs the exact data flow. |
+| `health_data_engineer` | Data engineer, health payer | Assumes the existing BAA covers every service in the planned workflow. |
+| `latam_si_architect` | Solutions architect, LATAM integrator | High-volume Spanish document work needs a measured cost per task. |
+
 ## Quick start
 
 ```bash

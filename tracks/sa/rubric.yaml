@@ -1,0 +1,71 @@
+# Scoring rubric for the judge. Each dimension is scored 1 to 5.
+# Edit the anchors to match how you'd coach a real SA. The judge prompt and
+# labeling tool both read this file.
+
+dimensions:
+  technical_discovery:
+    weight: 0.25
+    question: Did the seller understand the use case, current stack, volume, latency and data constraints before designing?
+    anchors:
+      1: Started prescribing an architecture without asking a useful technical question.
+      2: Asked about the use case but missed most of the stack, volume, latency or data constraints.
+      3: Covered some important inputs but left a material constraint or workload pattern unclear.
+      4: Asked focused questions about the workflow, stack, volume and key constraints, then used the answers.
+      5: Uncovered the hidden technical constraint with thoughtful follow-ups and adjusted the discussion around it.
+
+  solution_design:
+    weight: 0.20
+    question: Did the seller propose a fit-for-purpose design that respects the buyer's constraints?
+    anchors:
+      1: Proposed a generic architecture that conflicts with a stated constraint or cannot address the workflow.
+      2: Named products or patterns without explaining how they fit the stack, latency or data path.
+      3: Offered a plausible starting design but left important tradeoffs or ownership unclear.
+      4: Connected model choice, RAG or long context, tools and human review to the discovered needs.
+      5: Explained a simple end-to-end design, its tradeoffs and failure boundaries, and checked it with the buyer.
+
+  technical_accuracy:
+    weight: 0.20
+    question: Did the seller make technically accurate claims and stay within the fact sheet?
+    anchors:
+      1: Made a major false claim or a forbidden promise about latency, accuracy, limits, region, data, BAA scope, fine-tuning or price.
+      2: Made unsupported technical claims or confused model behavior with application responsibilities.
+      3: Mostly accurate, but blurred an important limitation or left an unsupported claim unqualified.
+      4: Accurate and clear about what the model, API, application and provider each do.
+      5: Proactively surfaced limits and uncertainty, and separated verified facts from items to confirm.
+
+  objection_handling:
+    weight: 0.15
+    question: When the buyer raised technical pushback, did the seller respond with care and substance?
+    anchors:
+      1: Ignored, dismissed or argued with the constraint, or recommended a path the buyer ruled out.
+      2: Gave a canned answer that did not address the technical concern.
+      3: Addressed the concern generally but left the key implementation question unanswered.
+      4: Acknowledged the concern, clarified its scope and answered with a relevant design or next check.
+      5: Turned the pushback into a precise design requirement and left the buyer more confident.
+
+  poc_scoping:
+    weight: 0.15
+    question: Did the seller scope a proof of concept that can establish whether the design works?
+    anchors:
+      1: No test plan or measurable next step.
+      2: Suggested a demo or pilot without a real evaluation set or success criteria.
+      3: Named a workflow and test data but left measures, owners or timing vague.
+      4: Proposed real examples, success criteria and a sensible owner or timeline.
+      5: Agreed a bounded test with representative and hard examples, quality and operational measures, named owners and a timeline.
+
+  listening:
+    weight: 0.05
+    question: Did the seller listen, keep turns short and build on what the technical lead said?
+    anchors:
+      1: Long architecture monologues. Ignored the buyer's answers.
+      2: Often too long or generic. Rarely referred to what the buyer said.
+      3: Reasonable length with some responsiveness.
+      4: Concise and clearly built on the buyer's answers.
+      5: Precise and conversational. The buyer clearly felt heard and saw their constraints reflected.
+
+# A call "passes" only if every condition below holds.
+pass_criteria:
+  hidden_concern_surfaced: true      # from the buyer's debrief
+  hidden_concern_addressed: true     # from the buyer's debrief
+  no_overpromise: true               # from the judge
+  min_weighted_score: 3.5

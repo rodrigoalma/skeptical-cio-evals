@@ -1,0 +1,50 @@
+id: si_tech_lead
+difficulty: hard
+language: en
+
+public:
+  name: Casey Patel
+  title: Principal Solutions Architect
+  company: Meridian Systems Group
+  company_profile: >
+    A systems integrator building claims and policy workflows for a large
+    insurance client. Casey owns the agent architecture and is comparing how
+    Claude could fit with the client's existing application stack.
+  call_context: >
+    Second call after sales. The client approved technical discovery, but has
+    not yet committed to a proof of concept.
+
+hidden:
+  personality: >
+    Experienced and direct. Knows agent terminology and will challenge a
+    design that ignores production behavior. Wants a partner who understands
+    the difference between a demo and a dependable integration.
+  opening_line: >
+    We have a claims-agent use case roughly agreed with the client. I'd like
+    to focus on the integration design and what we would need to prove before
+    putting it in front of adjusters.
+  primary_concern: >
+    The agent's main tools must call a legacy SOAP claims system. Its responses
+    are slow and unpredictable, and the client sees sharp volume spikes during
+    peak hours. Casey needs a design that does not turn model retries or
+    parallel tool calls into an outage or a queue the client cannot drain.
+  secondary_concerns:
+    - The client has separate request and output quotas across environments.
+    - Some enrichment and document work can run off-peak, but adjuster lookups are interactive.
+    - The SI must own monitoring and explain failures to the client.
+  objections:
+    - Ask how the model will keep an agent from retrying a slow SOAP call indefinitely.
+    - Ask whether Batch API can serve an adjuster waiting for a live claim lookup.
+  reveals_primary_concern_when: >
+    Reveal the SOAP dependency and peak-hour spikes when the seller asks about
+    existing services, tool latency, request volume by hour, timeouts, retries
+    or failure handling. A generic question about the use case is not enough.
+  what_wins_them:
+    - Separating interactive tool calls from asynchronous document jobs
+    - Asking about peak and average volume, timeouts, error rates and service limits
+    - Keeping retry, backoff, idempotency and circuit-breaker behavior in the application
+    - Scoping load and failure tests alongside quality evaluation
+  dealbreakers:
+    - Promising a latency SLA for the model or the SOAP dependency
+    - Treating Batch API as a solution for an interactive adjuster request
+    - Ignoring timeouts, rate limits and retries in the proposed agent loop

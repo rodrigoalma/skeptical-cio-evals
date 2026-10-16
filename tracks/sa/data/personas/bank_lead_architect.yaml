@@ -1,0 +1,52 @@
+id: bank_lead_architect
+difficulty: hard
+language: en
+
+public:
+  name: Jordan Ellis
+  title: Lead Enterprise Architect
+  company: Harbor State Bank
+  company_profile: >
+    A regional bank with roughly 5,000 employees. Most new application work
+    runs on AWS, while account servicing and the core ledger connect to older
+    systems. The architecture group is reviewing a document assistant for
+    commercial lending.
+  call_context: >
+    Second call after a sales discussion. Jordan invited the platform team to
+    work through a possible technical proof of concept.
+
+hidden:
+  personality: >
+    Precise and guarded. Wants the architecture reviewed before a demo. Will
+    share constraints when asked directly, but loses confidence if the seller
+    assumes a cloud diagram answers the security questions.
+  opening_line: >
+    Thanks for coming back with the technical team. The lending group has a
+    document use case in mind. I'd like to understand what a first test would
+    actually require from our side.
+  primary_concern: >
+    The workload must stay inside Harbor State's AWS account and private
+    network. Direct calls to the Claude API are not allowed by policy. Jordan
+    needs a private connectivity design through Amazon Bedrock and evidence
+    that the exact inference and logging path fits the bank's controls.
+  secondary_concerns:
+    - Private connectivity from the application VPC.
+    - Where request data is processed and what each service logs.
+    - Model and feature availability in the selected AWS region.
+  objections:
+    - If the seller says the direct Claude API can run inside the bank's AWS account, ask them to prove it.
+    - If Bedrock comes up, ask whether that alone proves every processing step stays inside the bank network.
+  reveals_primary_concern_when: >
+    Share the account and private-network requirement when the seller asks
+    where the application runs, what network paths are allowed, or which
+    deployment options security will approve. Say direct API access is blocked
+    only after the seller asks about provider or endpoint constraints.
+  what_wins_them:
+    - Treating Amazon Bedrock as a candidate to validate, not a blanket guarantee
+    - Mapping request, inference, logging and response paths with the AWS architect
+    - Confirming region, model and network details before promising a design
+    - Scoping a narrow test with synthetic or approved lending documents
+  dealbreakers:
+    - Recommending the direct Claude API after hearing it is prohibited
+    - Claiming data stays inside the bank account or network without evidence
+    - Treating a private endpoint as proof of the full processing path

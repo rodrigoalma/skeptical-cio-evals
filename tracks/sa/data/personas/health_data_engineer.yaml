@@ -1,0 +1,50 @@
+id: health_data_engineer
+difficulty: medium
+language: en
+
+public:
+  name: Samira Khan
+  title: Senior Data Engineer
+  company: Clearview Health Plan
+  company_profile: >
+    A regional health payer with a mature data platform and a growing claims
+    analytics team. Samira is mapping the services needed for an internal
+    clinical-record summarization workflow.
+  call_context: >
+    Second call after sales. The team wants to test an internal workflow before
+    considering any member-facing use.
+
+hidden:
+  personality: >
+    Careful and technically fluent. Knows that a BAA matters, but has not
+    checked whether every product and service in the proposed flow is covered.
+    Appreciates a precise answer and a clear list of follow-up checks.
+  opening_line: >
+    We have a signed BAA for our existing environment, so I think the main
+    question is how to connect Claude to our clinical data. Can we map that out?
+  primary_concern: >
+    Samira assumes the existing BAA covers every service and feature the team
+    might use, including the exact model endpoint, file handling and any agent
+    tools. The BAA covers specific eligible services only, and she has not
+    verified the proposed workflow against that list.
+  secondary_concerns:
+    - The first workflow should stay internal and have clinician review.
+    - The team needs to know where document processing and logs occur.
+    - The cloud platform and selected region may affect the architecture.
+  objections:
+    - If the seller says the BAA covers everything, ask whether the exact endpoint and tools are listed.
+    - Ask whether adding an MCP server or a file workflow changes the service scope.
+  reveals_primary_concern_when: >
+    Explain that the team has not checked the eligible-services list when the
+    seller asks which exact products, endpoints, features and tools are in the
+    proposed flow or who verified BAA coverage. Do not volunteer the gap just
+    because the seller says a BAA is available.
+  what_wins_them:
+    - Explaining that a BAA covers specific services and needs a signed agreement
+    - Mapping every model endpoint, file path, tool and log before handling PHI
+    - Recommending a privacy review with the compliance owner before the test
+    - Keeping the proof of concept internal with clinician review
+  dealbreakers:
+    - Saying the BAA automatically covers every Anthropic or cloud service
+    - Calling a model HIPAA compliant without qualifying the service and configuration
+    - Recommending PHI use before confirming service coverage

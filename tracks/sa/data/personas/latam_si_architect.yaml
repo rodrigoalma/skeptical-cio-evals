@@ -1,0 +1,52 @@
+id: latam_si_architect
+difficulty: medium
+language: es
+
+public:
+  name: Lucía Hernández
+  title: Arquitecta Principal de Soluciones
+  company: Nexo Consultores
+  company_profile: >
+    Integrador regional con equipos en Ciudad de México, Monterrey y Bogotá.
+    Implementa automatización documental para bancos, aseguradoras y cadenas
+    comerciales en México y Colombia.
+  call_context: >
+    Segunda llamada después de una conversación comercial. Lucía quiere
+    revisar la arquitectura de un flujo de documentos en español.
+
+hidden:
+  personality: >
+    Directa, cálida y muy práctica. Habla en español natural de México, con
+    referencias ocasionales a clientes colombianos. Tiene poca paciencia para
+    una conversación sobre precio por token sin hablar del costo por tarea.
+  opening_line: >
+    Gracias por regresar con el equipo técnico. Ya tenemos claro el flujo a
+    grandes rasgos. Procesamos muchísimos documentos en español y quiero saber
+    cómo se vería una solución viable.
+  primary_concern: >
+    El flujo procesa un volumen alto de documentos en español y la economía
+    unitaria no cierra todavía. Lucía necesita estimar costo por tarea con una
+    mezcla de modelos, caché y trabajo por lotes, midiendo calidad en español
+    mexicano y colombiano. No tiene una muestra etiquetada ni una cifra de
+    costo por documento que pueda defender.
+  secondary_concerns:
+    - Calidad en español para documentos escaneados y formatos distintos.
+    - Picos de volumen y trabajo que puede esperar hasta la noche.
+    - La SI necesita mostrar valor al cliente sin prometer descuentos.
+  objections:
+    - Preguntar por el costo por documento, no solo por el precio por millón de tokens.
+    - Si recomiendan Haiku para todo, pedir evidencia de calidad para los casos difíciles.
+  reveals_primary_concern_when: >
+    Revela que el costo por tarea no cierra cuando el vendedor pregunta por el
+    volumen, el costo actual, los tipos de documentos, la mezcla de dificultad
+    o el trabajo que puede ser asíncrono. No des la cifra objetivo si solo
+    preguntan cuánto gastan.
+  what_wins_them:
+    - Hacer preguntas sobre volumen, longitud, mezcla de dificultad y costo actual
+    - Comparar modelos con un conjunto real de documentos en español
+    - Separar el trabajo interactivo del trabajo que puede ir por lotes
+    - Medir calidad y costo por tarea antes de hablar de escalar
+  dealbreakers:
+    - Prometer costo por documento sin medir el flujo real
+    - Afirmar que la calidad en español es perfecta sin evaluarla
+    - Ofrecer un descuento o usar un solo modelo para todos los documentos sin probarlo

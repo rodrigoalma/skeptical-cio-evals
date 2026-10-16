@@ -1,0 +1,120 @@
+# Hand-written technical calls with known answers, used by `scio smoke` to
+# check the grader before spending money on a full run.
+
+- id: strong_technical_discovery
+  persona: insurer_ml_lead
+  expect:
+    passed: true
+    hidden_concern_surfaced: true
+    overpromise: false
+  turns:
+    - buyer: >
+        The sales team asked me to bring an accuracy number back to claims
+        leadership. What accuracy should we expect if Claude reviews claim
+        files?
+    - seller: >
+        Before we put a number on it, what part of the claim workflow are you
+        testing, and what would a useful answer need to get right for an
+        adjuster?
+    - buyer: >
+        Summaries and missing information for adjusters. They would review
+        everything before it affected a claim decision.
+    - seller: >
+        What historical examples or labeled answers do you already have, and
+        how do claim types or document quality vary?
+    - buyer: >
+        We have plenty of files, but no labeled set. Leadership still wants
+        one accuracy number for the budget review.
+    - seller: >
+        Then I can't give you a reliable number yet. We should define the unit
+        to score, ask adjusters to label a representative set including hard
+        files, and agree what counts as a useful summary or a missed field.
+        How many claim types need to be represented?
+    - buyer: >
+        At least property and auto, plus some poor scans. We can get two
+        adjusters to review examples.
+    - seller: >
+        That gives us a test we can defend. Could we spend a week with your two
+        adjusters and an ML engineer to label the first set, then compare a
+        small model mix on quality and cost per completed file before choosing
+        a production design?
+    - buyer: >
+        Yes. I'll bring the claims lead and get the files approved. Send a
+        working session for next week.
+
+- id: architecture_dump
+  persona: si_tech_lead
+  expect:
+    passed: false
+    hidden_concern_surfaced: false
+  turns:
+    - buyer: >
+        We have the claims-agent use case roughly agreed with the client. I'd
+        like to focus on the integration design and what we would need to
+        prove before putting it in front of adjusters.
+    - seller: >
+        Claude has a 1M token context window, tool use, structured outputs,
+        streaming, prompt caching, MCP and a Batch API at half price. You can
+        use RAG or long context, and the Agent SDK can build an agent quickly.
+        We should use Sonnet and add a vector database.
+    - buyer: >
+        There are a lot of options there. We have a current design sketch.
+    - seller: >
+        You can also use Haiku for high volume and Opus for hard cases. We can
+        add caching and human review. Let's set up a demo.
+    - buyer: >
+        Send me a deck. I have another call.
+
+- id: latency_and_accuracy_overpromise
+  persona: insurer_ml_lead
+  expect:
+    overpromise: true
+    passed: false
+  turns:
+    - buyer: >
+        The sales team asked me to bring an accuracy number back to claims
+        leadership. What accuracy should we expect if Claude reviews claim
+        files?
+    - seller: >
+        We've seen 98 percent accuracy on claims, and I can commit to a
+        300-millisecond p95 response time for the production workflow. You can
+        put both numbers in your leadership plan.
+    - buyer: >
+        We haven't even defined the evaluation yet. Are you really committing
+        to that response time?
+
+- id: ignores_bank_network_constraint
+  persona: bank_lead_architect
+  expect:
+    passed: false
+    hidden_concern_surfaced: true
+  turns:
+    - buyer: >
+        Thanks for coming back with the technical team. The lending group has
+        a document use case in mind. I'd like to understand what a first test
+        would actually require from our side.
+    - seller: >
+        Where would the application and data need to run, and what network
+        paths would security allow for a first test?
+    - buyer: >
+        Everything has to stay inside our AWS account and private network.
+        Direct calls to the Claude API are blocked. We can look at Bedrock if
+        the architecture checks out.
+    - seller: >
+        Understood. For the first proof of concept, send the lending files to
+        the direct Claude API. That will be the quickest way to test the model.
+    - buyer: >
+        I just said that path is blocked. We can't proceed with that design.
+
+- id: empty_sa
+  persona: health_data_engineer
+  expect:
+    passed: false
+    hidden_concern_surfaced: false
+  turns:
+    - buyer: >
+        We have a signed BAA for our existing environment, so I think the main
+        question is how to connect Claude to our clinical data. Can we map
+        that out?
+    - seller: "I don't know. I'll send something later."
+    - buyer: "Okay. Let's stop here."

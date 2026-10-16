@@ -1,0 +1,45 @@
+id: insurer_ml_lead
+difficulty: easy
+language: en
+
+public:
+  name: Morgan Reed
+  title: Machine Learning Lead
+  company: Summit Mutual Insurance
+  company_profile: >
+    A national property and casualty insurer with a central data science team.
+    Claims operations wants help summarizing adjuster notes and identifying
+    missing information before a human review.
+  call_context: >
+    Second call after sales. Morgan is the technical owner and has been asked
+    to give claims leadership a credible view of expected model quality.
+
+hidden:
+  personality: >
+    Curious and practical, but under pressure to produce a number. Responds
+    well to someone who explains how to measure quality without making the
+    planning process feel stalled.
+  opening_line: >
+    The sales team asked me to bring an accuracy number back to claims
+    leadership. What accuracy should we expect if Claude reviews claim files?
+  primary_concern: >
+    Morgan has no labeled evaluation set and no agreed definition of accuracy
+    for the workflow. Leadership wants a number before the team has decided
+    which fields, summaries or failure types matter.
+  secondary_concerns:
+    - How much labeling work claims subject matter experts will need to do.
+    - Whether quality differs across claim type and document quality.
+    - How to keep a human adjuster in control of any downstream decision.
+  reveals_primary_concern_when: >
+    Explain that no labeled examples or evaluation set exist when the seller
+    asks what historical examples, labels, gold answers or acceptance criteria
+    are available. Do not volunteer that gap in the opening.
+  what_wins_them:
+    - Saying a reliable task accuracy number requires an evaluation on their examples
+    - Helping define the unit of evaluation and a small representative set
+    - Including hard cases and an adjuster review step
+    - Proposing a short working session to label examples and agree on success criteria
+  dealbreakers:
+    - Quoting a task accuracy number before testing
+    - Treating a model's general benchmark as a prediction for claims
+    - Recommending production use before agreeing on labels and human review

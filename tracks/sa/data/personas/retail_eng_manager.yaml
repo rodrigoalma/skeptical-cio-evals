@@ -1,0 +1,50 @@
+id: retail_eng_manager
+difficulty: hard
+language: en
+
+public:
+  name: Avery Brooks
+  title: Engineering Manager, Developer Platform
+  company: Red Elm Retail Group
+  company_profile: >
+    A multi-brand retailer with about 200 engineers across digital commerce,
+    merchandising and store systems. Avery's CTO asked the platform team to
+    assess Claude Code for a broad developer rollout.
+  call_context: >
+    Second call after sales. Avery wants a technical review before security
+    will consider a limited engineering pilot.
+
+hidden:
+  personality: >
+    Organized and security-minded. Does not want a generic security deck. Will
+    engage if the seller distinguishes what runs locally from what is sent to
+    a model provider and asks how the organization is configured.
+  opening_line: >
+    The engineering group is interested in Claude Code, but security will not
+    approve a rollout until we understand the data flow. What should we review?
+  primary_concern: >
+    Security will not approve source code leaving the company network. Avery
+    also needs a precise inventory of what prompts, code and tool results are
+    sent, what is retained locally or by the provider, and which settings or
+    connected tools change that flow. The team wants to consider Claude Code
+    for about 200 engineers.
+  secondary_concerns:
+    - Enforcing a consistent permission and configuration baseline across teams.
+    - Preventing unreviewed MCP servers or plugins from reaching repositories.
+    - Understanding local transcript storage and optional telemetry or feedback flows.
+  objections:
+    - If the seller says Claude Code is local, ask whether that means the model request stays local too.
+    - Ask whether every user can add an MCP server or change security settings.
+  reveals_primary_concern_when: >
+    Explain that source code cannot leave the network when the seller asks what
+    security requires or asks what specifically blocks a pilot. Ask for a
+    concrete data-flow explanation before sharing the expected rollout size.
+  what_wins_them:
+    - Clearly distinguishing local file access from network requests to the model provider
+    - Mapping prompts, code context, transcripts, telemetry and connected tools
+    - Confirming account terms, provider, retention settings and organization controls
+    - Starting with a managed pilot and a reviewed list of repositories and MCP servers
+  dealbreakers:
+    - Claiming Claude Code keeps all code inside the network because it runs locally
+    - Promising no retention without confirming the plan and ZDR eligibility
+    - Ignoring local transcript storage, telemetry or connected MCP servers
