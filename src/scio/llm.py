@@ -34,7 +34,7 @@ from typing import Any, Protocol
 class ModelError(RuntimeError):
     """A call that came back but can't be used: refusal, wrong model, bad JSON."""
 
-    def __init__(self, kind: str, message: str, usage: "Usage | None" = None):
+    def __init__(self, kind: str, message: str, usage: Usage | None = None):
         super().__init__(f"{kind}: {message}")
         self.kind = kind
         self.usage = usage
@@ -72,7 +72,9 @@ class Usage:
 
     def cost(self, prices: dict[str, dict[str, float]]) -> float:
         model_prices = self._model_prices(prices)
-        input_tokens = self.input_tokens + self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        input_tokens = (
+            self.input_tokens + self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        )
         return (input_tokens * model_prices["input"] + self.output_tokens * model_prices["output"]) / 1_000_000
 
     def estimated_billed_cost(self, prices: dict[str, dict[str, float]], multipliers: dict[str, float]) -> float:

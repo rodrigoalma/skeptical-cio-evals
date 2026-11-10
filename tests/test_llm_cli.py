@@ -11,13 +11,13 @@ import pytest
 from scio import cli, fingerprint, loaders, runner
 from scio.llm import (
     BACKENDS,
+    CREDIT_BALANCE_TOO_LOW_MARKER,
     DEFAULT_BACKEND,
     AccountError,
     AnthropicLLM,
-    CREDIT_BALANCE_TOO_LOW_MARKER,
     ClaudeCodeLLM,
-    ModelError,
     MockLLM,
+    ModelError,
     backend_of,
     cost_of,
     make_llm,
@@ -109,7 +109,10 @@ def test_claude_cli_builds_isolated_argv_and_maps_usage(monkeypatch):
     assert usage.cache_read_tokens == 3
     assert usage.cache_write_5m_tokens == 0
     assert usage.cache_write_1h_tokens == 2
-    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 15
+    assert (
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens
+        == 15
+    )
     assert usage.output_tokens == 7
     prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
     assert cost_of([usage.to_dict()], prices) == 0.0001
@@ -133,7 +136,10 @@ def test_claude_cli_maps_cache_creation_breakdown_without_double_counting(monkey
     assert usage.cache_read_tokens == 20
     assert usage.cache_write_5m_tokens == 0
     assert usage.cache_write_1h_tokens == 30
-    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 60
+    assert (
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens
+        == 60
+    )
     prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
     assert cost_of([usage.to_dict()], prices) == 0.00019
 
@@ -203,9 +209,10 @@ def test_claude_cli_requires_a_logged_in_account_with_email(monkeypatch):
 
         llm = ClaudeCodeLLM()
 
+        # pool.map consumes every result inside this iteration, so the closure always sees this llm.
         def call():
             try:
-                llm.complete("claude-sonnet-5-5", "sys", [])
+                llm.complete("claude-sonnet-5-5", "sys", [])  # noqa: B023
             except AccountError as error:
                 return error.kind
 
@@ -417,7 +424,13 @@ def test_anthropic_caches_complete_calls_and_maps_cache_usage():
     assert complete_usage.cache_write_5m_tokens == 4
     assert complete_usage.cache_write_1h_tokens == 6
     provider_input_total = 10 + 3 + 10
-    assert complete_usage.input_tokens + complete_usage.cache_read_tokens + complete_usage.cache_write_5m_tokens + complete_usage.cache_write_1h_tokens == provider_input_total
+    assert (
+        complete_usage.input_tokens
+        + complete_usage.cache_read_tokens
+        + complete_usage.cache_write_5m_tokens
+        + complete_usage.cache_write_1h_tokens
+        == provider_input_total
+    )
     assert structured_usage.cache_read_tokens == 0
     assert structured_usage.cache_write_5m_tokens == 5
     assert structured_usage.cache_write_1h_tokens == 0

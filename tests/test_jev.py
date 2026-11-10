@@ -181,7 +181,6 @@ def test_jev_cli_fails_fast_without_key(monkeypatch, tmp_path):
 
 
 def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
-    rubric = loaders.load_rubric(track=TRACK)
     failed_run = tmp_path / "failed"
     _write_run(failed_run, [_call()])
 
@@ -236,7 +235,8 @@ def test_report_adds_jev_comparison_without_changing_opus_headline(tmp_path):
                        seller_efforts=["medium"], trials=1)
     run_dir = tmp_path / "mock-run"
     runner.write_run_meta(cfg, run_dir, mock=True, track=TRACK)
-    quiet = lambda *_: None
+    def quiet(*_):
+        return None
     runner.simulate_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
     for path in (run_dir / "calls").glob("*.json"):

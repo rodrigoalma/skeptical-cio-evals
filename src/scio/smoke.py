@@ -11,6 +11,7 @@ from . import loaders
 from .grade import grade_call
 from .llm import LLM, ModelError
 
+
 def load_cases(*, track: str) -> list[dict]:
     path = loaders.ROOT / loaders.track_file_path("smoke_cases", track=track)
     cases = loaders.load_yaml(path)

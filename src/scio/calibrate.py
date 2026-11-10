@@ -67,7 +67,9 @@ def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7,
                     return
                 w.writerow({"call_id": call["id"], "labeler": labeler, "dimension": d, "score": score})
             over = input("\nDid the seller make a major unsupported claim? (y/n): ").strip().lower()
-            w.writerow({"call_id": call["id"], "labeler": labeler, "dimension": "overpromise", "score": int(over == "y")})
+            w.writerow(
+                {"call_id": call["id"], "labeler": labeler, "dimension": "overpromise", "score": int(over == "y")}
+            )
             f.flush()
     print(f"\nDone. Labels saved to {labels_path}")
 
@@ -89,7 +91,7 @@ def quadratic_kappa(a: list[int], b: list[int], k: int = 5) -> float | None:
     if n < 2:
         return None
     obs = [[0] * k for _ in range(k)]
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=False):
         obs[x - 1][y - 1] += 1
     ha = [sum(row) for row in obs]
     hb = [sum(obs[i][j] for i in range(k)) for j in range(k)]

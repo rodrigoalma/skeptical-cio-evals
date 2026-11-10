@@ -19,12 +19,11 @@ import shutil
 import sys
 from pathlib import Path
 
-import anthropic
 from dotenv import load_dotenv
 
 from . import calibrate as cal
 from . import dashboard, loaders, report, runner, smoke
-from .llm import AccountError, BACKENDS, DEFAULT_BACKEND, backend_of, make_llm
+from .llm import BACKENDS, DEFAULT_BACKEND, AccountError, backend_of, make_llm
 
 RESULTS = loaders.ROOT / "results"
 EFFORTS = loaders.EFFORTS
@@ -180,7 +179,10 @@ def cmd_report(args) -> None:
 def cmd_dashboard(args) -> None:
     path = dashboard.build_combined(Path(args.results), include_mock=args.include_mock, use_git=not args.no_git)
     if not path:
-        sys.exit(f"No graded runs found in {args.results}." + ("" if args.include_mock else " Mock runs are skipped unless you pass --include-mock."))
+        sys.exit(
+            f"No graded runs found in {args.results}."
+            + ("" if args.include_mock else " Mock runs are skipped unless you pass --include-mock.")
+        )
     print(f"Dashboard: {path}")
 
 

@@ -94,7 +94,10 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             groups[(r["seller_model"], r["seller_prompt"], r["seller_effort"])].append(r)
     n_truncated = sum(r["status"] != "ok" for r in rows)
     errors_path = run_dir / "errors.jsonl"
-    n_errors = sum(1 for _ in open(errors_path, encoding="utf-8")) if errors_path.exists() else 0
+    n_errors = 0
+    if errors_path.exists():
+        with open(errors_path, encoding="utf-8") as f:
+            n_errors = sum(1 for _ in f)
     rank = {e: i for i, e in enumerate(loaders.EFFORTS)}
     configs = sorted(groups, key=lambda k: (k[0], k[1], rank.get(k[2], len(rank))))
 
@@ -131,7 +134,8 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             f"| {_avg(r['weighted_score'] for r in g)} | {_pct(r['concern_surfaced'] for r in g)} "
             f"| {_pct(r['concern_addressed'] for r in g)} | {_pct(r['overpromise'] for r in g)} "
             f"| {_pct(r['next_meeting'] for r in g)} | {_avg(r['talk_ratio'] for r in g)} "
-            f"| ${_avg((r['seller_cost_usd'] for r in g), '{:.4f}')} | {_avg((r['seller_sec_per_turn'] for r in g), '{:.1f}')} |"
+            f"| ${_avg((r['seller_cost_usd'] for r in g), '{:.4f}')} "
+            f"| {_avg((r['seller_sec_per_turn'] for r in g), '{:.1f}')} |"
         )
 
     lines += ["", "## Rubric scores (judge, 1 to 5)", "",
@@ -139,7 +143,9 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
               "|---|---|---|" + "---|" * len(dims)]
     for key in configs:
         g = groups[key]
-        lines.append(f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |")
+        lines.append(
+            f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |"
+        )
 
     jev_summary = jev.comparison(calls, dims)
     if jev_summary:

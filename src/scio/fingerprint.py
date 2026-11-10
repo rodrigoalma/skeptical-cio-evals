@@ -15,8 +15,8 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import yaml
 
@@ -180,13 +180,19 @@ def from_git(meta: dict, calls: list[dict], *, track: str) -> dict | None:
         prompts = {loaders.prompt_name(c["seller_prompt"]): c["seller_prompt"] for c in calls}
         fp = simulation(cfg, {c["persona"] for c in calls}, prompts, track=loaders.DEFAULT_TRACK, read=read)
         files = grading_files(track=loaders.DEFAULT_TRACK, read=read)
-        openings = {p: yaml.safe_load(read(loaders.track_file_path("persona", p, track=track).as_posix()))["hidden"]["opening_line"].strip()
-                    for p in fp["personas"]}
+        openings = {
+            p: yaml.safe_load(read(loaders.track_file_path("persona", p, track=track).as_posix()))["hidden"][
+                "opening_line"
+            ].strip()
+            for p in fp["personas"]
+        }
     except (OSError, subprocess.CalledProcessError, KeyError, TypeError, yaml.YAMLError):
         return None
     # Spot check: every call opens with its persona's scripted line, so a
     # mismatch means the run used files that differ from this commit.
-    mismatched = sorted({c["persona"] for c in calls if c["turns"] and c["turns"][0]["text"].strip() != openings[c["persona"]]})
+    mismatched = sorted(
+        {c["persona"] for c in calls if c["turns"] and c["turns"][0]["text"].strip() != openings[c["persona"]]}
+    )
     return {**fp, "grading_files": files, "source": "git", "git": {"commit": commit, "dirty": None},
             "check": {"opening_lines_mismatch": mismatched}}
 

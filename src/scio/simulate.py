@@ -98,8 +98,8 @@ def run_call(
         "status": "truncated" if truncated else "ok",
         "wall_seconds": round(time.time() - started, 1),
         "usage": {
-            "seller": [u.to_dict() for u, t in zip(usage, _roles(len(usage))) if t == "seller"],
-            "buyer": [u.to_dict() for u, t in zip(usage, _roles(len(usage))) if t == "buyer"],
+            "seller": [u.to_dict() for u, t in zip(usage, _roles(len(usage)), strict=False) if t == "seller"],
+            "buyer": [u.to_dict() for u, t in zip(usage, _roles(len(usage)), strict=False) if t == "buyer"],
         },
     }
 

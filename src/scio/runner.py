@@ -17,9 +17,8 @@ import anthropic
 
 from . import fingerprint, jev, loaders
 from .grade import grade_call
-from .llm import AccountError, LLM, backend_of
+from .llm import LLM, AccountError, backend_of
 from .simulate import run_call
-
 
 # Account-level errors: every other call would fail the same way, so stop the run.
 FATAL_ERRORS = (anthropic.AuthenticationError, anthropic.PermissionDeniedError, AccountError)

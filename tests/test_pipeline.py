@@ -11,8 +11,8 @@ from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
 from scio.llm import (
-    AccountError,
     DEFAULT_BACKEND,
+    AccountError,
     MockLLM,
     Usage,
     cost_of,
@@ -29,7 +29,13 @@ def test_personas_have_required_fields():
         for p in personas.values():
             for key in ("name", "title", "company", "company_profile"):
                 assert p["public"].get(key), f"{track}/{p['id']} missing public.{key}"
-            for key in ("opening_line", "primary_concern", "reveals_primary_concern_when", "what_wins_them", "dealbreakers"):
+            for key in (
+                "opening_line",
+                "primary_concern",
+                "reveals_primary_concern_when",
+                "what_wins_them",
+                "dealbreakers",
+            ):
                 assert p["hidden"].get(key), f"{track}/{p['id']} missing hidden.{key}"
 
 
@@ -76,7 +82,10 @@ def test_list_price_and_estimated_billed_costs_account_for_cached_tokens():
     )
     serialized = usage.to_dict()
 
-    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 180
+    assert (
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens
+        == 180
+    )
     assert cost_of([serialized], prices) == 0.00056
     assert cost_totals({"seller": [serialized]}, prices, multipliers) == {
         "list_price": {"seller": 0.00056},
@@ -169,7 +178,7 @@ def test_message_views_alternate_and_start_with_user():
     for side in ("seller", "buyer"):
         msgs = _view(turns, side)
         assert msgs[0]["role"] == "user"
-        assert all(a["role"] != b["role"] for a, b in zip(msgs, msgs[1:]))
+        assert all(a["role"] != b["role"] for a, b in zip(msgs, msgs[1:], strict=False))
 
 
 def test_mock_call_ends_and_records_usage():
@@ -221,7 +230,8 @@ def test_full_mock_run(tmp_path):
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     llm = MockLLM()
-    quiet = lambda *a: None
+    def quiet(*a):
+        return None
     runner.simulate_all(llm, cfg, run_dir, track=track, log=quiet)
     runner.grade_all(llm, cfg, run_dir, track=track, log=quiet)
     calls = runner.load_calls(run_dir)
@@ -353,8 +363,8 @@ def test_smoke_reports_a_refusal_and_keeps_going():
     track = loaders.track_of(cfg)
     ok = smoke.run(RefusingJudge(), cfg, track=track, log=lines.append)
     assert not ok
-    assert any(l.startswith("[ERR ] strong_discovery") and "refusal" in l for l in lines)
-    assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases(track=track)) - 1
+    assert any(line.startswith("[ERR ] strong_discovery") and "refusal" in line for line in lines)
+    assert sum(line.startswith(("[ok  ]", "[MISS]")) for line in lines) == len(smoke.load_cases(track=track)) - 1
 
 
 def test_effort_sweep_is_recorded_and_reported(tmp_path):
@@ -364,7 +374,8 @@ def test_effort_sweep_is_recorded_and_reported(tmp_path):
     run_dir = tmp_path / "run"
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+    def quiet(*a):
+        return None
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
@@ -403,7 +414,8 @@ def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
     run_dir = tmp_path / "run"
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+    def quiet(*a):
+        return None
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
@@ -426,7 +438,8 @@ def _mock_run(tmp_path, name, **run):
     run_dir = tmp_path / name
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+    def quiet(*a):
+        return None
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     return cfg, run_dir
