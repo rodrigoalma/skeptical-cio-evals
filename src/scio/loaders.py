@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from string import Template
+from typing import Any
 
 import yaml
 
@@ -16,7 +17,7 @@ DEFAULT_TRACK = "sales"
 EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 
 
-def load_yaml(path: Path) -> dict:
+def load_yaml(path: Path) -> Any:  # YAML can be a mapping (config, rubric) or a list (smoke cases)
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 

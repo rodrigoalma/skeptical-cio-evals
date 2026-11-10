@@ -3,6 +3,7 @@
 import csv
 import json
 import time
+from typing import Any
 
 import anthropic
 import pytest
@@ -58,7 +59,7 @@ def test_rubric_weights_sum_to_one():
 
 
 def test_cost_of_owns_usage_cost_calculation_and_normalizes_legacy_pricing():
-    usages = [
+    usages: list[dict[str, Any]] = [
         {"model": "claude-sonnet-5-5", "input_tokens": 1000, "output_tokens": 200},
         {"model": "claude-sonnet-5-5", "input_tokens": 500, "output_tokens": 100},
     ]
@@ -228,7 +229,9 @@ def test_pass_logic():
 
 def test_kappa():
     assert quadratic_kappa([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]) == 1.0
-    assert quadratic_kappa([1, 2, 3, 4, 5], [5, 4, 3, 2, 1]) < 0
+    kappa = quadratic_kappa([1, 2, 3, 4, 5], [5, 4, 3, 2, 1])
+    assert kappa is not None
+    assert kappa < 0
 
 
 def test_full_mock_run(tmp_path):
@@ -517,6 +520,7 @@ def test_dashboard_pools_runs_on_the_same_version(tmp_path):
     assert len(data["rows"]) == 4
 
     path = dashboard.build_combined(tmp_path, include_mock=True)
+    assert path is not None
     assert "/*__DATA__*/null" not in path.read_text() and not dashboard.build_combined(tmp_path)
 
 
