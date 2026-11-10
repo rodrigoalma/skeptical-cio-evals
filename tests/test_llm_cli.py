@@ -4,6 +4,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import anthropic
 import pytest
@@ -350,7 +351,7 @@ def test_cli_refusal_in_error_response_is_labeled_refusal(monkeypatch):
     ],
 )
 def test_api_bad_request_maps_only_credit_balance_error(message, maps_to_account_error):
-    response = SimpleNamespace(status_code=400, request=object(), headers={})
+    response = cast(Any, SimpleNamespace(status_code=400, request=object(), headers={}))
     bad_request = anthropic.BadRequestError(message, response=response, body=None)
 
     class Messages:
@@ -358,7 +359,7 @@ def test_api_bad_request_maps_only_credit_balance_error(message, maps_to_account
             raise bad_request
 
     llm = AnthropicLLM.__new__(AnthropicLLM)
-    llm.client = SimpleNamespace(messages=Messages())
+    llm.client = cast(anthropic.Anthropic, SimpleNamespace(messages=Messages()))
 
     if maps_to_account_error:
         with pytest.raises(AccountError) as error:
@@ -428,7 +429,7 @@ def test_anthropic_caches_complete_calls_and_maps_cache_usage():
             return responses.pop(0)
 
     llm = AnthropicLLM.__new__(AnthropicLLM)
-    llm.client = SimpleNamespace(messages=Messages())
+    llm.client = cast(anthropic.Anthropic, SimpleNamespace(messages=Messages()))
 
     _, complete_usage = llm.complete("claude-sonnet-5-5", "sys", [])
     _, structured_usage = llm.structured("claude-sonnet-5-5", "sys", "grade", {})
@@ -467,6 +468,7 @@ def test_served_model_mismatch_uses_first_model_usage_entry(monkeypatch):
     with pytest.raises(ModelError) as error:
         ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
     assert error.value.kind == "served_model_mismatch"
+    assert error.value.usage is not None
     assert error.value.usage.served_model == "claude-opus-5-5-20260101"
 
 

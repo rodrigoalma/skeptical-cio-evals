@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from typesafe_sdk import (
@@ -197,7 +198,7 @@ def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
 
     auth_run = tmp_path / "auth"
     _write_run(auth_run, [_call()])
-    auth_error = TypeSafeAuthenticationError(401, {"error": "unauthorized"}, {}, "bad key")
+    auth_error = TypeSafeAuthenticationError(401, {"error": "unauthorized"}, cast(Any, {}), "bad key")
 
     def auth_client(**_):
         class Client(_FakeClient):
@@ -224,7 +225,9 @@ def test_jev_errors_are_logged_and_auth_errors_stop(tmp_path, monkeypatch):
 def test_jev_maps_account_errors_to_fatal_account_errors(error_type, status, kind):
     error = error_type(status, {"error": "account failure"}, {}, "account failure")
 
-    assert jev._account_failure(error).kind == kind
+    failure = jev._account_failure(error)
+    assert failure is not None
+    assert failure.kind == kind
 
 
 def test_report_adds_jev_comparison_without_changing_opus_headline(tmp_path):

@@ -112,7 +112,7 @@ def _is_price(value) -> bool:
         return False
 
 
-def normalize_pricing(pricing: dict, models=None, require_cache_read: bool = False) -> dict[str, dict[str, float]]:
+def normalize_pricing(pricing: object, models=None, require_cache_read: bool = False) -> dict[str, dict[str, float]]:
     """Validate prices and convert legacy [input, output] pairs to named rates."""
     if not isinstance(pricing, dict):
         raise ValueError("Pricing must be a mapping from model IDs to prices")
@@ -230,7 +230,8 @@ class AnthropicLLM:
             output_config["format"] = fmt
         start = time.perf_counter()
         try:
-            resp = self.client.messages.create(
+            # ty can't match the optional kwargs unpacked below to an SDK overload. They stay omitted when unset.
+            resp = self.client.messages.create(  # ty: ignore[no-matching-overload]
                 model=model,
                 system=system,
                 messages=messages,
