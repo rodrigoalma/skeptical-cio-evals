@@ -25,6 +25,7 @@ lint:
   script:
     - uv run ruff check .
     - uv run ruff format --check .
+    - uv run ty check
 
 test:
   stage: check

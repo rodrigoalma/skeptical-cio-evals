@@ -310,7 +310,7 @@ the main concern. `offshore_gsi_head` shows cost as a primary concern.
 
 ### After you change either one
 
-1. Run `uv run ruff check . && uv run ruff format --check . && uv run pytest`.
+1. Run `uv run ruff check . && uv run ruff format --check . && uv run ty check && uv run pytest`.
    The tests check every persona has the required fields and that the seller
    never sees the hidden brief.
 2. If you added a new way to fail, add a hand-written case to
