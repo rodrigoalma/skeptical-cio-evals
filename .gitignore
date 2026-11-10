@@ -7,3 +7,4 @@ results/
 labels/*.csv
 !labels/example_labels.csv
 .vscode/
+.uv-cache/
