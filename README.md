@@ -310,8 +310,9 @@ the main concern. `offshore_gsi_head` shows cost as a primary concern.
 
 ### After you change either one
 
-1. Run `uv run pytest`. It checks every persona has the required fields and
-   that the seller never sees the hidden brief.
+1. Run `uv run ruff check . && uv run ruff format --check . && uv run pytest`.
+   The tests check every persona has the required fields and that the seller
+   never sees the hidden brief.
 2. If you added a new way to fail, add a hand-written case to
    `data/smoke/known_cases.yaml` (for example a seller promising a price
    match, with `overpromise: true`) and run `uv run scio smoke` to make sure

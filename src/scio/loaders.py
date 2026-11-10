@@ -43,8 +43,11 @@ def track_of(cfg: dict) -> str:
 
 def available_tracks() -> list[str]:
     tracks_dir = ROOT / "tracks"
-    tracks = sorted(path.name for path in tracks_dir.iterdir()
-                    if path.is_dir() and path.name != DEFAULT_TRACK) if tracks_dir.is_dir() else []
+    tracks = (
+        sorted(path.name for path in tracks_dir.iterdir() if path.is_dir() and path.name != DEFAULT_TRACK)
+        if tracks_dir.is_dir()
+        else []
+    )
     return [DEFAULT_TRACK, *tracks]
 
 

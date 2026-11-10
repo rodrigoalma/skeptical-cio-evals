@@ -1,14 +1,14 @@
 """Command line entry point.
 
-    scio smoke               check the grader on known good/bad calls first
-    scio run                 simulate, grade and report in one go
-    scio run --mock          same, offline, no API key needed
-    scio grade RUN_DIR       (re)grade calls in a run
-    scio jev RUN_DIR         run Jev as a shadow judge
-    scio report RUN_DIR      rebuild report.md and viewer.html
-    scio label RUN_DIR       hand-grade calls for judge calibration
-    scio calibrate RUN_DIR   compare the judge with your labels
-    scio personas            list buyer personas
+scio smoke               check the grader on known good/bad calls first
+scio run                 simulate, grade and report in one go
+scio run --mock          same, offline, no API key needed
+scio grade RUN_DIR       (re)grade calls in a run
+scio jev RUN_DIR         run Jev as a shadow judge
+scio report RUN_DIR      rebuild report.md and viewer.html
+scio label RUN_DIR       hand-grade calls for judge calibration
+scio calibrate RUN_DIR   compare the judge with your labels
+scio personas            list buyer personas
 """
 
 from __future__ import annotations
@@ -19,12 +19,11 @@ import shutil
 import sys
 from pathlib import Path
 
-import anthropic
 from dotenv import load_dotenv
 
 from . import calibrate as cal
 from . import dashboard, loaders, report, runner, smoke
-from .llm import AccountError, BACKENDS, DEFAULT_BACKEND, backend_of, make_llm
+from .llm import BACKENDS, DEFAULT_BACKEND, AccountError, backend_of, make_llm
 
 RESULTS = loaders.ROOT / "results"
 EFFORTS = loaders.EFFORTS
@@ -131,8 +130,10 @@ def cmd_run(args) -> None:
         return
     runner.grade_all(llm, cfg, run_dir, track=track)
     path = report.build(run_dir, track=track, cfg=cfg)
-    print(f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
-          "\nRun `scio dashboard` to update the one across all runs.")
+    print(
+        f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
+        "\nRun `scio dashboard` to update the one across all runs."
+    )
 
 
 def _meta_cfg(run_dir: Path) -> tuple[dict, bool]:
@@ -180,7 +181,10 @@ def cmd_report(args) -> None:
 def cmd_dashboard(args) -> None:
     path = dashboard.build_combined(Path(args.results), include_mock=args.include_mock, use_git=not args.no_git)
     if not path:
-        sys.exit(f"No graded runs found in {args.results}." + ("" if args.include_mock else " Mock runs are skipped unless you pass --include-mock."))
+        sys.exit(
+            f"No graded runs found in {args.results}."
+            + ("" if args.include_mock else " Mock runs are skipped unless you pass --include-mock.")
+        )
     print(f"Dashboard: {path}")
 
 

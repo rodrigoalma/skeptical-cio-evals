@@ -15,8 +15,13 @@ def _write_track(root, name="technical"):
     (track / "prompts").mkdir()
     (track / "data" / "fact_sheet.md").write_text("technical fact sheet", encoding="utf-8")
     (track / "data" / "personas" / "bank_cio.yaml").write_text(
-        yaml.safe_dump({"id": "bank_cio", "public": {"name": "Test", "title": "CIO", "company": "Bank"},
-                        "hidden": {"opening_line": "Hello"}}),
+        yaml.safe_dump(
+            {
+                "id": "bank_cio",
+                "public": {"name": "Test", "title": "CIO", "company": "Bank"},
+                "hidden": {"opening_line": "Hello"},
+            }
+        ),
         encoding="utf-8",
     )
     (track / "data" / "smoke" / "known_cases.yaml").write_text(
@@ -61,8 +66,9 @@ def test_track_loaders_read_from_track_root(tmp_path, monkeypatch):
 def test_track_fingerprints_preserve_sales_shape_and_separate_other_tracks(tmp_path, monkeypatch):
     cfg = loaders.load_config()
     sales = fingerprint.record(cfg, ["bank_cio"], ["coached"], track=loaders.DEFAULT_TRACK)
-    explicit_sales = fingerprint.record({**cfg, "track": "sales"}, ["bank_cio"], ["coached"],
-                                        track=loaders.DEFAULT_TRACK)
+    explicit_sales = fingerprint.record(
+        {**cfg, "track": "sales"}, ["bank_cio"], ["coached"], track=loaders.DEFAULT_TRACK
+    )
     assert sales == explicit_sales
     assert "track" not in sales["settings"]
     assert set(sales["files"]) == {"data/fact_sheet.md", "prompts/buyer.md"}
@@ -74,8 +80,7 @@ def test_track_fingerprints_preserve_sales_shape_and_separate_other_tracks(tmp_p
     assert technical["settings"]["track"] == "technical"
     assert "track" in fingerprint.differences(sales, technical)
 
-    sales_grade = fingerprint.grading("judge", "high", "buyer", {}, DEFAULT_BACKEND,
-                                      track=loaders.DEFAULT_TRACK)
+    sales_grade = fingerprint.grading("judge", "high", "buyer", {}, DEFAULT_BACKEND, track=loaders.DEFAULT_TRACK)
     technical_grade = fingerprint.grading("judge", "high", "buyer", {}, DEFAULT_BACKEND, track="technical")
     assert "track" not in sales_grade["settings"]
     assert technical_grade["settings"]["track"] == "technical"

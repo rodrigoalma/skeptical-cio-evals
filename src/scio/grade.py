@@ -21,11 +21,17 @@ DEBRIEF_SCHEMA = {
     "properties": {
         "hidden_concern_surfaced": {
             "type": "boolean",
-            "description": "Did your primary concern come out clearly during the call, because the seller asked or created the opening?",
+            "description": (
+                "Did your primary concern come out clearly during the call, because the seller asked or created the "
+                "opening?"
+            ),
         },
         "hidden_concern_addressed": {
             "type": "boolean",
-            "description": "Did the seller respond to that concern with something credible and specific? False if it never surfaced.",
+            "description": (
+                "Did the seller respond to that concern with something credible and specific? "
+                "False if it never surfaced."
+            ),
         },
         "dealbreaker_hit": {"type": "boolean", "description": "Did the seller hit any dealbreaker from your brief?"},
         "dealbreaker_detail": {"type": "string", "description": "Which one and what was said. Empty string if none."},
@@ -35,7 +41,10 @@ DEBRIEF_SCHEMA = {
         },
         "would_take_next_meeting": {"type": "boolean"},
         "trust": {"type": "integer", "enum": [1, 2, 3, 4, 5], "description": "How much you trust this seller now."},
-        "comment": {"type": "string", "description": "One or two honest sentences, in your voice, about how the call went."},
+        "comment": {
+            "type": "string",
+            "description": "One or two honest sentences, in your voice, about how the call went.",
+        },
     },
     "required": [
         "hidden_concern_surfaced",
@@ -56,7 +65,10 @@ def judge_schema(rubric: dict) -> dict:
     return {
         "type": "object",
         "properties": {
-            "reasoning": {"type": "string", "description": "Your analysis of the call, dimension by dimension, before scoring."},
+            "reasoning": {
+                "type": "string",
+                "description": "Your analysis of the call, dimension by dimension, before scoring.",
+            },
             "unsupported_claims": {
                 "type": "array",
                 "items": {

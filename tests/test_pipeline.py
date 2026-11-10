@@ -11,8 +11,8 @@ from scio import dashboard, fingerprint, loaders, report, runner
 from scio.calibrate import calibrate, quadratic_kappa
 from scio.grade import code_metrics, passed, weighted_score
 from scio.llm import (
-    AccountError,
     DEFAULT_BACKEND,
+    AccountError,
     MockLLM,
     Usage,
     cost_of,
@@ -29,7 +29,13 @@ def test_personas_have_required_fields():
         for p in personas.values():
             for key in ("name", "title", "company", "company_profile"):
                 assert p["public"].get(key), f"{track}/{p['id']} missing public.{key}"
-            for key in ("opening_line", "primary_concern", "reveals_primary_concern_when", "what_wins_them", "dealbreakers"):
+            for key in (
+                "opening_line",
+                "primary_concern",
+                "reveals_primary_concern_when",
+                "what_wins_them",
+                "dealbreakers",
+            ):
                 assert p["hidden"].get(key), f"{track}/{p['id']} missing hidden.{key}"
 
 
@@ -37,8 +43,9 @@ def test_seller_never_sees_hidden_brief():
     for track in loaders.available_tracks():
         for p in loaders.load_personas(track=track).values():
             for name in loaders.seller_prompt_names(track=track):
-                system = loaders.render(f"seller_{name}", track=track,
-                                        fact_sheet="FS", account_brief=loaders.account_brief(p))
+                system = loaders.render(
+                    f"seller_{name}", track=track, fact_sheet="FS", account_brief=loaders.account_brief(p)
+                )
                 assert p["hidden"]["primary_concern"].strip()[:60] not in system
 
 
@@ -76,7 +83,9 @@ def test_list_price_and_estimated_billed_costs_account_for_cached_tokens():
     )
     serialized = usage.to_dict()
 
-    assert usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 180
+    assert (
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 180
+    )
     assert cost_of([serialized], prices) == 0.00056
     assert cost_totals({"seller": [serialized]}, prices, multipliers) == {
         "list_price": {"seller": 0.00056},
@@ -169,13 +178,20 @@ def test_message_views_alternate_and_start_with_user():
     for side in ("seller", "buyer"):
         msgs = _view(turns, side)
         assert msgs[0]["role"] == "user"
-        assert all(a["role"] != b["role"] for a, b in zip(msgs, msgs[1:]))
+        assert all(a["role"] != b["role"] for a, b in zip(msgs, msgs[1:], strict=False))
 
 
 def test_mock_call_ends_and_records_usage():
     p = loaders.load_personas(["bank_cio"], track=loaders.DEFAULT_TRACK)["bank_cio"]
-    call = run_call(MockLLM(), p, "coached", "claude-haiku-5-5", "claude-sonnet-5-5",
-                    max_seller_turns=8, track=loaders.DEFAULT_TRACK)
+    call = run_call(
+        MockLLM(),
+        p,
+        "coached",
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5",
+        max_seller_turns=8,
+        track=loaders.DEFAULT_TRACK,
+    )
     assert call["ended_by"] == "buyer"
     assert call["turns"][0]["speaker"] == "buyer"
     assert len(call["usage"]["seller"]) == sum(t["speaker"] == "seller" for t in call["turns"])
@@ -189,10 +205,12 @@ def test_mock_call_ends_and_records_usage():
 
 
 def test_code_metrics():
-    m = code_metrics([
-        {"speaker": "buyer", "text": "one two three four"},
-        {"speaker": "seller", "text": "Why? How?"},
-    ])
+    m = code_metrics(
+        [
+            {"speaker": "buyer", "text": "one two three four"},
+            {"speaker": "seller", "text": "Why? How?"},
+        ]
+    )
     assert m["seller_questions"] == 2
     assert m["first_question_turn"] == 1
     assert m["talk_ratio"] == round(2 / 6, 2)
@@ -215,13 +233,21 @@ def test_kappa():
 
 def test_full_mock_run(tmp_path):
     cfg = loaders.load_config()
-    cfg["run"].update(personas="bank_cio,latam_si_lead", seller_models=["haiku"], seller_prompts=["basic", "coached"],
-                      seller_efforts=["medium"], trials=1)
+    cfg["run"].update(
+        personas="bank_cio,latam_si_lead",
+        seller_models=["haiku"],
+        seller_prompts=["basic", "coached"],
+        seller_efforts=["medium"],
+        trials=1,
+    )
     run_dir = tmp_path / "run"
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
     llm = MockLLM()
-    quiet = lambda *a: None
+
+    def quiet(*a):
+        return None
+
     runner.simulate_all(llm, cfg, run_dir, track=track, log=quiet)
     runner.grade_all(llm, cfg, run_dir, track=track, log=quiet)
     calls = runner.load_calls(run_dir)
@@ -236,9 +262,7 @@ def test_full_mock_run(tmp_path):
         cache_read_tokens=20_000,
         cache_write_5m_tokens=10_000,
     )
-    (run_dir / "calls" / f"{cached_call['id']}.json").write_text(
-        json.dumps(cached_call), encoding="utf-8"
-    )
+    (run_dir / "calls" / f"{cached_call['id']}.json").write_text(json.dumps(cached_call), encoding="utf-8")
     calls = runner.load_calls(run_dir)
 
     meta_path = run_dir / "run.json"
@@ -270,10 +294,7 @@ def test_full_mock_run(tmp_path):
     assert "/*__DATA__*/null" not in html
 
     labels = tmp_path / "labels.csv"
-    labels.write_text(
-        "call_id,labeler,dimension,score\n"
-        + "".join(f"{c['id']},me,discovery,3\n" for c in calls)
-    )
+    labels.write_text("call_id,labeler,dimension,score\n" + "".join(f"{c['id']},me,discovery,3\n" for c in calls))
     out = calibrate(run_dir, labels)
     assert "discovery" in out
 
@@ -284,6 +305,7 @@ def test_full_mock_run(tmp_path):
 
 def test_smoke_cases_load_and_grade_offline():
     from scio import smoke
+
     cases = smoke.load_cases(track=loaders.DEFAULT_TRACK)
     assert {c["id"] for c in cases} >= {"strong_discovery", "feature_monologue", "overpromise"}
     for c in cases:
@@ -353,18 +375,26 @@ def test_smoke_reports_a_refusal_and_keeps_going():
     track = loaders.track_of(cfg)
     ok = smoke.run(RefusingJudge(), cfg, track=track, log=lines.append)
     assert not ok
-    assert any(l.startswith("[ERR ] strong_discovery") and "refusal" in l for l in lines)
-    assert sum(l.startswith(("[ok  ]", "[MISS]")) for l in lines) == len(smoke.load_cases(track=track)) - 1
+    assert any(line.startswith("[ERR ] strong_discovery") and "refusal" in line for line in lines)
+    assert sum(line.startswith(("[ok  ]", "[MISS]")) for line in lines) == len(smoke.load_cases(track=track)) - 1
 
 
 def test_effort_sweep_is_recorded_and_reported(tmp_path):
     cfg = loaders.load_config()
-    cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["coached"],
-                      seller_efforts=["high", "low"], trials=1)
+    cfg["run"].update(
+        personas="bank_cio",
+        seller_models=["haiku"],
+        seller_prompts=["coached"],
+        seller_efforts=["high", "low"],
+        trials=1,
+    )
     run_dir = tmp_path / "run"
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+
+    def quiet(*a):
+        return None
+
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
@@ -398,12 +428,16 @@ def test_bad_or_missing_effort_is_rejected():
 
 def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
     cfg = loaders.load_config()
-    cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["coached"],
-                      seller_efforts=["medium"], trials=1)
+    cfg["run"].update(
+        personas="bank_cio", seller_models=["haiku"], seller_prompts=["coached"], seller_efforts=["medium"], trials=1
+    )
     run_dir = tmp_path / "run"
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+
+    def quiet(*a):
+        return None
+
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
 
@@ -421,12 +455,23 @@ def test_runs_from_before_the_prompt_rename_still_work(tmp_path):
 
 def _mock_run(tmp_path, name, **run):
     cfg = loaders.load_config()
-    cfg["run"].update({"personas": "bank_cio", "seller_models": ["haiku"], "seller_prompts": ["coached"],
-                       "seller_efforts": ["medium"], "trials": 1, **run})
+    cfg["run"].update(
+        {
+            "personas": "bank_cio",
+            "seller_models": ["haiku"],
+            "seller_prompts": ["coached"],
+            "seller_efforts": ["medium"],
+            "trials": 1,
+            **run,
+        }
+    )
     run_dir = tmp_path / name
     track = loaders.track_of(cfg)
     runner.write_run_meta(cfg, run_dir, mock=True, track=track)
-    quiet = lambda *a: None
+
+    def quiet(*a):
+        return None
+
     runner.simulate_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=track, log=quiet)
     return cfg, run_dir
@@ -440,12 +485,12 @@ def test_fingerprint_is_recorded_and_changes_with_the_test():
     assert fingerprint.record(cfg, ["bank_cio"], ["coached"], track=track)["files"] == fp["files"]
 
     # Seller choices are what you compare, so they don't change the version.
-    other = fingerprint.record({**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}},
-                               ["bank_cio"], ["basic"], track=track)
+    other = fingerprint.record(
+        {**cfg, "run": {**cfg["run"], "seller_models": ["opus"]}}, ["bank_cio"], ["basic"], track=track
+    )
     assert fingerprint.differences(fp, other) == []
 
-    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND,
-                                track=track)
+    judge = fingerprint.grading("judge-a", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND, track=track)
     assert fingerprint.version(fp, judge) != fingerprint.version(fp, {**judge, "files": {"rubric.yaml": "y"}})
     edited = {**fp, "files": {**fp["files"], "data/fact_sheet.md": "changed"}}
     assert fingerprint.differences(fp, edited) == ["data/fact_sheet.md"]
@@ -495,6 +540,7 @@ def test_old_runs_get_their_version_from_git(tmp_path, monkeypatch):
             return "abc123\n"
         rel = args[1].split(":", 1)[1].replace("seller_v2.md", "seller_coached.md")
         return (loaders.ROOT / rel).read_text(encoding="utf-8")
+
     monkeypatch.setattr(fingerprint, "_git", fake_git)
 
     data = dashboard.collect([new, old], loaders.load_config()["pricing"])

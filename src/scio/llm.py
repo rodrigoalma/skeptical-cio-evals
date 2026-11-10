@@ -34,7 +34,7 @@ from typing import Any, Protocol
 class ModelError(RuntimeError):
     """A call that came back but can't be used: refusal, wrong model, bad JSON."""
 
-    def __init__(self, kind: str, message: str, usage: "Usage | None" = None):
+    def __init__(self, kind: str, message: str, usage: Usage | None = None):
         super().__init__(f"{kind}: {message}")
         self.kind = kind
         self.usage = usage
@@ -72,7 +72,9 @@ class Usage:
 
     def cost(self, prices: dict[str, dict[str, float]]) -> float:
         model_prices = self._model_prices(prices)
-        input_tokens = self.input_tokens + self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        input_tokens = (
+            self.input_tokens + self.cache_read_tokens + self.cache_write_5m_tokens + self.cache_write_1h_tokens
+        )
         return (input_tokens * model_prices["input"] + self.output_tokens * model_prices["output"]) / 1_000_000
 
     def estimated_billed_cost(self, prices: dict[str, dict[str, float]], multipliers: dict[str, float]) -> float:
@@ -121,14 +123,10 @@ def normalize_pricing(pricing: dict, models=None, require_cache_read: bool = Fal
             raise ValueError(f"Invalid pricing model ID: {model!r}")
         if isinstance(rates, (list, tuple)):
             if len(rates) != 2:
-                raise ValueError(
-                    f"Invalid pricing for model {model!r}: expected input and output prices"
-                )
+                raise ValueError(f"Invalid pricing for model {model!r}: expected input and output prices")
             rates = {"input": rates[0], "output": rates[1]}
         if not isinstance(rates, dict):
-            raise ValueError(
-                f"Invalid pricing for model {model!r}: expected a mapping with input and output prices"
-            )
+            raise ValueError(f"Invalid pricing for model {model!r}: expected a mapping with input and output prices")
         required_rates = {"input", "output"}
         if require_cache_read:
             required_rates.add("cache_read")
@@ -138,9 +136,7 @@ def normalize_pricing(pricing: dict, models=None, require_cache_read: bool = Fal
             raise ValueError(f"Invalid pricing for model {model!r}: missing {names} price")
         for name, price in rates.items():
             if not _is_price(price):
-                raise ValueError(
-                    f"Invalid pricing for model {model!r}: {name} price must be a non-negative number"
-                )
+                raise ValueError(f"Invalid pricing for model {model!r}: {name} price must be a non-negative number")
         normalized[model] = dict(rates)
 
     if models is not None:
@@ -188,17 +184,12 @@ def cost_totals(
     normalized = normalize_pricing(pricing)
     multipliers = normalize_cache_write_multipliers(cache_write_multipliers)
     usages = {category: [Usage(**usage) for usage in records] for category, records in usages_by_category.items()}
-    list_price = {
-        category: sum(usage.cost(normalized) for usage in records)
-        for category, records in usages.items()
-    }
+    list_price = {category: sum(usage.cost(normalized) for usage in records) for category, records in usages.items()}
     return {
         "list_price": list_price,
         "list_price_total": sum(list_price.values()),
         "estimated_billed_total": sum(
-            usage.estimated_billed_cost(normalized, multipliers)
-            for records in usages.values()
-            for usage in records
+            usage.estimated_billed_cost(normalized, multipliers) for records in usages.values() for usage in records
         ),
     }
 
@@ -313,16 +304,33 @@ def _error_excerpt(text: str) -> str:
 
 def _fatal_cli_error(text: str) -> str | None:
     lowered = text.lower()
-    if any(term in lowered for term in (
-        "not logged in", "login required", "please log in", "authentication required",
-        "authentication failed", "not authenticated", "please authenticate",
-        "failed to authenticate", "unauthorized", "invalid api key",
-    )):
+    if any(
+        term in lowered
+        for term in (
+            "not logged in",
+            "login required",
+            "please log in",
+            "authentication required",
+            "authentication failed",
+            "not authenticated",
+            "please authenticate",
+            "failed to authenticate",
+            "unauthorized",
+            "invalid api key",
+        )
+    ):
         return "cli_auth"
-    if any(term in lowered for term in (
-        "usage limit", "rate limit", "rate_limit", "out of extra usage", "limit reached",
-        CREDIT_BALANCE_TOO_LOW_MARKER,
-    )):
+    if any(
+        term in lowered
+        for term in (
+            "usage limit",
+            "rate limit",
+            "rate_limit",
+            "out of extra usage",
+            "limit reached",
+            CREDIT_BALANCE_TOO_LOW_MARKER,
+        )
+    ):
         return "cli_usage_limit"
     return None
 
@@ -397,14 +405,20 @@ class ClaudeCodeLLM:
         command = ["claude", "-p", "--model", model]
         if effort is not None:
             command.extend(("--effort", effort))
-        command.extend((
-            "--system-prompt", system,
-            "--tools", "",
-            "--strict-mcp-config",
-            "--setting-sources", "",
-            "--no-session-persistence",
-            "--output-format", "json",
-        ))
+        command.extend(
+            (
+                "--system-prompt",
+                system,
+                "--tools",
+                "",
+                "--strict-mcp-config",
+                "--setting-sources",
+                "",
+                "--no-session-persistence",
+                "--output-format",
+                "json",
+            )
+        )
         if schema is not None:
             command.extend(("--json-schema", json.dumps(schema, ensure_ascii=False, separators=(",", ":"))))
         command.append(prompt)
@@ -450,9 +464,17 @@ class ClaudeCodeLLM:
             if response.get("stop_reason") == "refusal":
                 raise ModelError("refusal", "the model declined this request")
             status = response.get("api_error_status")
-            error_text = "\n".join(filter(None, (
-                str(response.get("subtype", "")), str(status or ""), str(response.get("result", "")), detail,
-            )))
+            error_text = "\n".join(
+                filter(
+                    None,
+                    (
+                        str(response.get("subtype", "")),
+                        str(status or ""),
+                        str(response.get("result", "")),
+                        detail,
+                    ),
+                )
+            )
             fatal_kind = _fatal_cli_error(error_text)
             if not fatal_kind and status in (401, 403, "401", "403"):
                 fatal_kind = "cli_auth"
