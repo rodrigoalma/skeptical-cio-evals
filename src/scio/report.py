@@ -103,8 +103,11 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
 
     lines = [f"# Skeptical CIO eval report: `{run_dir.name}`", ""]
     if meta.get("mock"):
-        lines += ["> **Mock run.** These numbers come from the offline mock model and mean nothing. "
-                  "They only show that the pipeline works.", ""]
+        lines += [
+            "> **Mock run.** These numbers come from the offline mock model and mean nothing. "
+            "They only show that the pipeline works.",
+            "",
+        ]
     buyer = cfg["models"][cfg["roles"]["buyer"]]
     judge = cfg["models"][cfg["roles"]["judge"]]
     effort = cfg.get("effort") or {}
@@ -138,9 +141,13 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             f"| {_avg((r['seller_sec_per_turn'] for r in g), '{:.1f}')} |"
         )
 
-    lines += ["", "## Rubric scores (judge, 1 to 5)", "",
-              "| Seller model | Prompt | Effort | " + " | ".join(dims) + " |",
-              "|---|---|---|" + "---|" * len(dims)]
+    lines += [
+        "",
+        "## Rubric scores (judge, 1 to 5)",
+        "",
+        "| Seller model | Prompt | Effort | " + " | ".join(dims) + " |",
+        "|---|---|---|" + "---|" * len(dims),
+    ]
     for key in configs:
         g = groups[key]
         lines.append(
@@ -149,22 +156,27 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
 
     jev_summary = jev.comparison(calls, dims)
     if jev_summary:
-        lines += ["", "## Jev shadow judge", "",
-                  "| Dimension | Opus mean | Jev mean |",
-                  "|---|---:|---:|"]
+        lines += ["", "## Jev shadow judge", "", "| Dimension | Opus mean | Jev mean |", "|---|---:|---:|"]
         for dimension, means in jev_summary["dimensions"].items():
             lines.append(f"| {dimension} | {means['opus_mean']:.2f} | {means['jev_mean']:.2f} |")
-        lines += ["",
-                  f"Weighted scores within 1 point: {jev_summary['weighted_within_one']:.0%} of calls. "
-                  f"Pass agreement: {jev_summary['pass_agreement']:.0%}.",
-                  f"Mean Jev time: {jev_summary['mean_seconds']:.2f} seconds per call. "
-                  f"Usage: {jev_summary['input_tokens']:,} input + {jev_summary['output_tokens']:,} output "
-                  f"tokens ({jev_summary['total_tokens']:,} total).", ""]
+        lines += [
+            "",
+            f"Weighted scores within 1 point: {jev_summary['weighted_within_one']:.0%} of calls. "
+            f"Pass agreement: {jev_summary['pass_agreement']:.0%}.",
+            f"Mean Jev time: {jev_summary['mean_seconds']:.2f} seconds per call. "
+            f"Usage: {jev_summary['input_tokens']:,} input + {jev_summary['output_tokens']:,} output "
+            f"tokens ({jev_summary['total_tokens']:,} total).",
+            "",
+        ]
 
     personas = sorted({r["persona"] for r in rows})
-    lines += ["", "## Pass rate by persona", "",
-              "| Persona | " + " | ".join(f"{m} / {p} / {e}" for m, p, e in configs) + " |",
-              "|---|" + "---|" * len(configs)]
+    lines += [
+        "",
+        "## Pass rate by persona",
+        "",
+        "| Persona | " + " | ".join(f"{m} / {p} / {e}" for m, p, e in configs) + " |",
+        "|---|" + "---|" * len(configs),
+    ]
     for pid in personas:
         cells = []
         for key in configs:
@@ -178,11 +190,16 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             if cl.get("severity") == "major":
                 claims.append((c["id"], cl))
     if claims:
-        lines += ["", "## Major unsupported claims", "",
-                  "Things sellers said that the fact sheet doesn't back up. These are the moments that "
-                  "would get a real SA in trouble.", ""]
+        lines += [
+            "",
+            "## Major unsupported claims",
+            "",
+            "Things sellers said that the fact sheet doesn't back up. These are the moments that "
+            "would get a real SA in trouble.",
+            "",
+        ]
         for cid, cl in claims[:12]:
-            lines.append(f"- **{cid}**: \"{cl['quote']}\" ({cl['issue']})")
+            lines.append(f'- **{cid}**: "{cl["quote"]}" ({cl["issue"]})')
 
     run_costs = cost_totals(
         {
@@ -193,20 +210,30 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
         pricing,
         cache_write_multipliers,
     )
-    lines += ["", "## What this run cost", "",
-              "Costs use current config.yaml list prices.", "",
-              f"Seller ${run_costs['list_price']['seller']:.2f}, buyer ${run_costs['list_price']['buyer']:.2f}, "
-              f"grading ${run_costs['list_price']['grading']:.2f}. "
-              f"Total ${run_costs['list_price_total']:.2f}.",
-              f"Estimated billed with prompt caching: ${run_costs['estimated_billed_total']:.2f} (estimate).", ""]
+    lines += [
+        "",
+        "## What this run cost",
+        "",
+        "Costs use current config.yaml list prices.",
+        "",
+        f"Seller ${run_costs['list_price']['seller']:.2f}, buyer ${run_costs['list_price']['buyer']:.2f}, "
+        f"grading ${run_costs['list_price']['grading']:.2f}. "
+        f"Total ${run_costs['list_price_total']:.2f}.",
+        f"Estimated billed with prompt caching: ${run_costs['estimated_billed_total']:.2f} (estimate).",
+        "",
+    ]
 
     cal = run_dir / "calibration.md"
     if cal.exists():
         lines += ["", cal.read_text(encoding="utf-8")]
     else:
-        lines += ["## Judge calibration", "",
-                  "Not done yet. Run `scio label` to hand-grade some calls, then `scio calibrate` "
-                  "to see how often the judge agrees with you.", ""]
+        lines += [
+            "## Judge calibration",
+            "",
+            "Not done yet. Run `scio label` to hand-grade some calls, then `scio calibrate` "
+            "to see how often the judge agrees with you.",
+            "",
+        ]
 
     (run_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
     _write_viewer(run_dir, calls, rows, dims, meta)

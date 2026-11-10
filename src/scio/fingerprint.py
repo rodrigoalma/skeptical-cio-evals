@@ -50,8 +50,7 @@ def _hash_files(kinds: tuple[str, ...], *, track: str, read: Reader) -> dict[str
     }
 
 
-def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], *, track: str,
-               read: Reader | None = None) -> dict:
+def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], *, track: str, read: Reader | None = None) -> dict:
     """prompt_files maps the prompt's name to its file stem, which differ only
     for runs saved before the basic/coached rename."""
     r = cfg["run"]
@@ -85,8 +84,7 @@ def grading_files(*, track: str, read: Reader | None = None) -> dict:
     return _hash_files(GRADE_FILES, track=track, read=read or _read_disk)
 
 
-def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backend: str,
-            *, track: str) -> dict:
+def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backend: str, *, track: str) -> dict:
     # The buyer model also writes the debrief, so it is part of grading.
     settings = {"judge_model": judge_model, "judge_effort": judge_effort, "debrief_model": buyer_model}
     if backend != DEFAULT_BACKEND:
@@ -96,8 +94,7 @@ def grading(judge_model: str, judge_effort, buyer_model: str, files: dict, backe
     return {"files": files, "settings": settings}
 
 
-def jev_grading(rubric: dict, fact_sheet: str, questions: dict, model: str,
-                *, track: str) -> dict:
+def jev_grading(rubric: dict, fact_sheet: str, questions: dict, model: str, *, track: str) -> dict:
     """Fingerprint the inputs that determine a Jev shadow grade."""
     fingerprint = {
         "rubric": short_hash(rubric),
@@ -133,26 +130,32 @@ def differences(old: dict, new: dict) -> list[str]:
     personas and prompts that only one of them used."""
     out = [k for k in old["files"] if old["files"][k] != new["files"].get(k)]
     out += [k for k in old["settings"] if old["settings"][k] != new["settings"].get(k)]
-    if (backend_of(old["settings"]) != backend_of(new["settings"])
-            and "backend" not in out):
+    if backend_of(old["settings"]) != backend_of(new["settings"]) and "backend" not in out:
         out.append("backend")
     old_track = loaders.track_of(old["settings"])
     new_track = loaders.track_of(new["settings"])
     if old_track != new_track and "track" not in out:
         out.append("track")
     for group, kind in (("personas", "persona"), ("seller_prompts", "seller_prompt")):
-        out += [loaders.track_file_path(kind, k, track=new_track).as_posix()
-                for k in old[group] if k in new[group] and old[group][k] != new[group][k]]
+        out += [
+            loaders.track_file_path(kind, k, track=new_track).as_posix()
+            for k in old[group]
+            if k in new[group] and old[group][k] != new[group][k]
+        ]
     return out
 
 
 def merge(old: dict, new: dict) -> dict:
     """Add personas and prompts a resumed run picked up."""
-    return {**old, "personas": {**new["personas"], **old["personas"]},
-            "seller_prompts": {**new["seller_prompts"], **old["seller_prompts"]}}
+    return {
+        **old,
+        "personas": {**new["personas"], **old["personas"]},
+        "seller_prompts": {**new["seller_prompts"], **old["seller_prompts"]},
+    }
 
 
 # ---------------------------------------------------------------- old runs
+
 
 def _git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=loaders.ROOT, capture_output=True, text=True, check=True).stdout
@@ -193,8 +196,13 @@ def from_git(meta: dict, calls: list[dict], *, track: str) -> dict | None:
     mismatched = sorted(
         {c["persona"] for c in calls if c["turns"] and c["turns"][0]["text"].strip() != openings[c["persona"]]}
     )
-    return {**fp, "grading_files": files, "source": "git", "git": {"commit": commit, "dirty": None},
-            "check": {"opening_lines_mismatch": mismatched}}
+    return {
+        **fp,
+        "grading_files": files,
+        "source": "git",
+        "git": {"commit": commit, "dirty": None},
+        "check": {"opening_lines_mismatch": mismatched},
+    }
 
 
 def for_run(run_dir: Path, meta: dict, calls: list[dict], use_git: bool = True, *, track: str) -> dict | None:
@@ -218,8 +226,12 @@ def call_version(fp: dict, call: dict, cfg: dict, *, track: str) -> str:
         grade = g["fingerprint"]
     else:
         models = cfg["models"]
-        grade = grading(g.get("judge_model") or models[cfg["roles"]["judge"]],
-                        g.get("judge_effort") or (cfg.get("effort") or {}).get("judge"),
-                        models[cfg["roles"]["buyer"]], fp.get("grading_files") or {}, backend_of(cfg),
-                        track=track)
+        grade = grading(
+            g.get("judge_model") or models[cfg["roles"]["judge"]],
+            g.get("judge_effort") or (cfg.get("effort") or {}).get("judge"),
+            models[cfg["roles"]["buyer"]],
+            fp.get("grading_files") or {},
+            backend_of(cfg),
+            track=track,
+        )
     return version(fp, grade)

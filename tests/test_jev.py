@@ -123,8 +123,7 @@ def test_jev_shadow_pass_uses_existing_pass_rules(monkeypatch, probability, expe
     response = _response(rubric, overpromise=probability)
     _install_fake_client(monkeypatch, response)
 
-    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric,
-                            track=TRACK)
+    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric, track=TRACK)
 
     assert result["passed"] is expected
 
@@ -133,8 +132,7 @@ def test_jev_uses_requested_model_when_response_omits_it(monkeypatch):
     rubric = loaders.load_rubric(track=TRACK)
     _install_fake_client(monkeypatch, _response(rubric, model=None))
 
-    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric,
-                            track=TRACK)
+    result = jev.grade_call(_call(), loaders.load_personas(["bank_cio"], track=TRACK)["bank_cio"], rubric, track=TRACK)
 
     assert result["model"] == "jev-latest"
     assert result["fingerprint"]["model"] == "jev-latest"
@@ -231,12 +229,15 @@ def test_jev_maps_account_errors_to_fatal_account_errors(error_type, status, kin
 
 def test_report_adds_jev_comparison_without_changing_opus_headline(tmp_path):
     cfg = loaders.load_config()
-    cfg["run"].update(personas="bank_cio", seller_models=["haiku"], seller_prompts=["basic"],
-                       seller_efforts=["medium"], trials=1)
+    cfg["run"].update(
+        personas="bank_cio", seller_models=["haiku"], seller_prompts=["basic"], seller_efforts=["medium"], trials=1
+    )
     run_dir = tmp_path / "mock-run"
     runner.write_run_meta(cfg, run_dir, mock=True, track=TRACK)
+
     def quiet(*_):
         return None
+
     runner.simulate_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
     runner.grade_all(MockLLM(), cfg, run_dir, track=TRACK, log=quiet)
     for path in (run_dir / "calls").glob("*.json"):

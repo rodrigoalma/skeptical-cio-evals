@@ -29,8 +29,7 @@ def read_labels(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7,
-          *, track: str) -> None:
+def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7, *, track: str) -> None:
     rubric = loaders.load_rubric(track=track)
     dims = rubric["dimensions"]
     existing = read_labels(labels_path)
@@ -108,11 +107,7 @@ def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
     if judge not in ("opus", "jev"):
         raise ValueError(f"Unknown judge {judge!r}. Use 'opus' or 'jev'.")
     labels = read_labels(labels_path)
-    calls = {
-        c["id"]: c
-        for c in load_calls(run_dir)
-        if "grade" in c and (judge == "opus" or "jev" in c)
-    }
+    calls = {c["id"]: c for c in load_calls(run_dir) if "grade" in c and (judge == "opus" or "jev" in c)}
     labels = [r for r in labels if r["call_id"] in calls]
     if not labels:
         raise SystemExit(f"No labels in {labels_path} match calls in {run_dir}. Run `scio label` first.")
@@ -133,10 +128,14 @@ def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
 
     n_calls = len({r["call_id"] for r in labels})
     judge_name = "Jev" if judge == "jev" else "Judge"
-    out = [f"## {judge_name} calibration", "",
-           f"{judge_name} scores compared with human labels on {n_calls} calls.", "",
-           "| Dimension | n | Exact match | Within 1 | Mean abs error | Judge bias | Weighted kappa |",
-           "|---|---|---|---|---|---|---|"]
+    out = [
+        f"## {judge_name} calibration",
+        "",
+        f"{judge_name} scores compared with human labels on {n_calls} calls.",
+        "",
+        "| Dimension | n | Exact match | Within 1 | Mean abs error | Judge bias | Weighted kappa |",
+        "|---|---|---|---|---|---|---|",
+    ]
     for dim, ps in pairs.items():
         if dim == "overpromise":
             continue
@@ -147,15 +146,21 @@ def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
         mae = mean(abs(a - b) for a, b in ps)
         bias = mean(j) - mean(h)
         kappa = quadratic_kappa(h, j)
-        out.append(f"| {dim} | {len(ps)} | {exact:.0%} | {within:.0%} | {mae:.2f} | {bias:+.2f} | "
-                   f"{'-' if kappa is None else f'{kappa:.2f}'} |")
+        out.append(
+            f"| {dim} | {len(ps)} | {exact:.0%} | {within:.0%} | {mae:.2f} | {bias:+.2f} | "
+            f"{'-' if kappa is None else f'{kappa:.2f}'} |"
+        )
     if pairs.get("overpromise"):
         ps = pairs["overpromise"]
         agree = mean(int(a == b) for a, b in ps)
         out += ["", f"Overpromise flag: judge and human agree on {agree:.0%} of {len(ps)} calls."]
     rerun = "scio jev RUN_DIR --force" if judge == "jev" else "scio grade --force"
-    out += ["", f"{judge_name} bias above zero means the judge is more generous than you. If a dimension has low "
-            f"agreement, tighten its anchors in the track rubric and re-grade with `{rerun}`.", ""]
+    out += [
+        "",
+        f"{judge_name} bias above zero means the judge is more generous than you. If a dimension has low "
+        f"agreement, tighten its anchors in the track rubric and re-grade with `{rerun}`.",
+        "",
+    ]
     text = "\n".join(out)
     (run_dir / "calibration.md").write_text(text, encoding="utf-8")
     return text

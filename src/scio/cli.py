@@ -1,14 +1,14 @@
 """Command line entry point.
 
-    scio smoke               check the grader on known good/bad calls first
-    scio run                 simulate, grade and report in one go
-    scio run --mock          same, offline, no API key needed
-    scio grade RUN_DIR       (re)grade calls in a run
-    scio jev RUN_DIR         run Jev as a shadow judge
-    scio report RUN_DIR      rebuild report.md and viewer.html
-    scio label RUN_DIR       hand-grade calls for judge calibration
-    scio calibrate RUN_DIR   compare the judge with your labels
-    scio personas            list buyer personas
+scio smoke               check the grader on known good/bad calls first
+scio run                 simulate, grade and report in one go
+scio run --mock          same, offline, no API key needed
+scio grade RUN_DIR       (re)grade calls in a run
+scio jev RUN_DIR         run Jev as a shadow judge
+scio report RUN_DIR      rebuild report.md and viewer.html
+scio label RUN_DIR       hand-grade calls for judge calibration
+scio calibrate RUN_DIR   compare the judge with your labels
+scio personas            list buyer personas
 """
 
 from __future__ import annotations
@@ -130,8 +130,10 @@ def cmd_run(args) -> None:
         return
     runner.grade_all(llm, cfg, run_dir, track=track)
     path = report.build(run_dir, track=track, cfg=cfg)
-    print(f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
-          "\nRun `scio dashboard` to update the one across all runs.")
+    print(
+        f"\nReport: {path}\nViewer: {run_dir / 'viewer.html'}\nDashboard: {run_dir / 'dashboard.html'}"
+        "\nRun `scio dashboard` to update the one across all runs."
+    )
 
 
 def _meta_cfg(run_dir: Path) -> tuple[dict, bool]:

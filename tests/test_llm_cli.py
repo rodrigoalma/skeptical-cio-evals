@@ -95,9 +95,23 @@ def test_claude_cli_builds_isolated_argv_and_maps_usage(monkeypatch):
         "Other party: buyer says hello\nAssistant: seller says hi\n\nAssistant:"
     )
     assert command == [
-        "claude", "-p", "--model", "claude-sonnet-5-5", "--effort", "high",
-        "--system-prompt", "system rules", "--tools", "", "--strict-mcp-config",
-        "--setting-sources", "", "--no-session-persistence", "--output-format", "json", prompt,
+        "claude",
+        "-p",
+        "--model",
+        "claude-sonnet-5-5",
+        "--effort",
+        "high",
+        "--system-prompt",
+        "system rules",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence",
+        "--output-format",
+        "json",
+        prompt,
     ]
     assert seen["kwargs"]["stdin"] == subprocess.DEVNULL
     assert seen["kwargs"]["timeout"] == 300
@@ -110,8 +124,7 @@ def test_claude_cli_builds_isolated_argv_and_maps_usage(monkeypatch):
     assert usage.cache_write_5m_tokens == 0
     assert usage.cache_write_1h_tokens == 2
     assert (
-        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens
-        == 15
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 15
     )
     assert usage.output_tokens == 7
     prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
@@ -121,13 +134,15 @@ def test_claude_cli_builds_isolated_argv_and_maps_usage(monkeypatch):
 
 
 def test_claude_cli_maps_cache_creation_breakdown_without_double_counting(monkeypatch):
-    response = _response(usage={
-        "input_tokens": 10,
-        "cache_read_input_tokens": 20,
-        "cache_creation_input_tokens": 30,
-        "cache_creation": {"ephemeral_1h_input_tokens": 30, "ephemeral_5m_input_tokens": 0},
-        "output_tokens": 7,
-    })
+    response = _response(
+        usage={
+            "input_tokens": 10,
+            "cache_read_input_tokens": 20,
+            "cache_creation_input_tokens": 30,
+            "cache_creation": {"ephemeral_1h_input_tokens": 30, "ephemeral_5m_input_tokens": 0},
+            "output_tokens": 7,
+        }
+    )
     monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(response))
 
     _, usage = ClaudeCodeLLM().complete("claude-sonnet-5-5", "system", [])
@@ -137,21 +152,22 @@ def test_claude_cli_maps_cache_creation_breakdown_without_double_counting(monkey
     assert usage.cache_write_5m_tokens == 0
     assert usage.cache_write_1h_tokens == 30
     assert (
-        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens
-        == 60
+        usage.input_tokens + usage.cache_read_tokens + usage.cache_write_5m_tokens + usage.cache_write_1h_tokens == 60
     )
     prices = {"claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1}}
     assert cost_of([usage.to_dict()], prices) == 0.00019
 
 
 def test_claude_cli_maps_missing_cache_usage_to_zero(monkeypatch):
-    response = _response(usage={
-        "input_tokens": None,
-        "cache_read_input_tokens": None,
-        "cache_creation_input_tokens": None,
-        "cache_creation": {"ephemeral_1h_input_tokens": None, "ephemeral_5m_input_tokens": None},
-        "output_tokens": None,
-    })
+    response = _response(
+        usage={
+            "input_tokens": None,
+            "cache_read_input_tokens": None,
+            "cache_creation_input_tokens": None,
+            "cache_creation": {"ephemeral_1h_input_tokens": None, "ephemeral_5m_input_tokens": None},
+            "output_tokens": None,
+        }
+    )
     monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(response))
 
     _, usage = ClaudeCodeLLM().complete("claude-sonnet-5-5", "system", [])
@@ -302,9 +318,11 @@ def test_cli_failures_and_fatal_account_errors(monkeypatch):
         ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
     assert error.value.kind == "cli_error"
 
-    for message, kind in (("Not logged in. Please run /login.", "cli_auth"),
-                          ("Usage limit reached. Try again later.", "cli_usage_limit"),
-                          ("Your credit balance is too low.", "cli_usage_limit")):
+    for message, kind in (
+        ("Not logged in. Please run /login.", "cli_auth"),
+        ("Usage limit reached. Try again later.", "cli_usage_limit"),
+        ("Your credit balance is too low.", "cli_usage_limit"),
+    ):
         monkeypatch.setattr(
             "scio.llm.subprocess.run",
             _fake_run(_response(is_error=True, result=message)),
@@ -440,9 +458,11 @@ def test_anthropic_caches_complete_calls_and_maps_cache_usage():
 
 
 def test_served_model_mismatch_uses_first_model_usage_entry(monkeypatch):
-    response = _response(modelUsage={
-        "another-model": {"canonicalModel": "claude-opus-5-5-20260101"},
-    })
+    response = _response(
+        modelUsage={
+            "another-model": {"canonicalModel": "claude-opus-5-5-20260101"},
+        }
+    )
     monkeypatch.setattr("scio.llm.subprocess.run", _fake_run(response))
     with pytest.raises(ModelError) as error:
         ClaudeCodeLLM().complete("claude-sonnet-5-5", "sys", [])
@@ -477,21 +497,23 @@ def test_api_fingerprints_keep_their_old_shape_and_subscription_is_separate():
         "max_tokens_per_turn": cfg["run"]["max_tokens_per_turn"],
     }
     assert api_sim["settings"] == legacy_sim_settings
-    api_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND,
-                                   track=track)
+    api_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, DEFAULT_BACKEND, track=track)
     legacy_grade_settings = {"judge_model": "judge", "judge_effort": "high", "debrief_model": "buyer"}
     assert api_grade["settings"] == legacy_grade_settings
-    assert fingerprint.version(api_sim, api_grade) == fingerprint.short_hash({
-        "simulation": {"files": api_sim["files"], "settings": legacy_sim_settings},
-        "grading": {"files": api_grade["files"], "settings": legacy_grade_settings},
-    })
+    assert fingerprint.version(api_sim, api_grade) == fingerprint.short_hash(
+        {
+            "simulation": {"files": api_sim["files"], "settings": legacy_sim_settings},
+            "grading": {"files": api_grade["files"], "settings": legacy_grade_settings},
+        }
+    )
 
     subscription_cfg = {**cfg, "backend": "subscription"}
     subscription_sim = fingerprint.record(subscription_cfg, ["bank_cio"], ["coached"], track=track)
     assert subscription_sim["settings"]["backend"] == "subscription"
     assert fingerprint.differences(api_sim, subscription_sim) == ["backend"]
-    subscription_grade = fingerprint.grading("judge", "high", "buyer", {"rubric.yaml": "x"}, "subscription",
-                                             track=track)
+    subscription_grade = fingerprint.grading(
+        "judge", "high", "buyer", {"rubric.yaml": "x"}, "subscription", track=track
+    )
     assert subscription_grade["settings"]["backend"] == "subscription"
     assert fingerprint.version(api_sim, api_grade) != fingerprint.version(subscription_sim, subscription_grade)
     assert fingerprint.differences(subscription_sim, api_sim) == ["backend"]

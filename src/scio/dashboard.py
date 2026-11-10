@@ -39,8 +39,11 @@ def _row(call: dict, run: str, ver: str, pricing: dict) -> dict:
         "next_meeting": g["debrief"]["would_take_next_meeting"],
         "cost": round(cost_of(seller, pricing), 6),
         "sec": round(mean(u["seconds"] for u in seller), 2) if seller else 0,
-        "claims": [{"quote": c["quote"], "issue": c["issue"]}
-                   for c in g["judge"]["unsupported_claims"] if c.get("severity") == "major"],
+        "claims": [
+            {"quote": c["quote"], "issue": c["issue"]}
+            for c in g["judge"]["unsupported_claims"]
+            if c.get("severity") == "major"
+        ],
     }
 
 
@@ -74,10 +77,16 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
         run = run_dir.name
         models = cfg["models"]
         effort = cfg.get("effort") or {}
-        runs.append({"name": run, "created": meta.get("created"), "mock": meta.get("mock", False),
-                     "source": fp["source"] if fp else "unversioned",
-                     "git": (fp or {}).get("git"),
-                     "mismatch": ((fp or {}).get("check") or {}).get("opening_lines_mismatch", [])})
+        runs.append(
+            {
+                "name": run,
+                "created": meta.get("created"),
+                "mock": meta.get("mock", False),
+                "source": fp["source"] if fp else "unversioned",
+                "git": (fp or {}).get("git"),
+                "mismatch": ((fp or {}).get("check") or {}).get("opening_lines_mismatch", []),
+            }
+        )
         if fp:
             for p, h in fp["personas"].items():
                 persona_h[(run, p)] = h
@@ -88,16 +97,22 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
                 ver = fingerprint.call_version(fp, c, cfg, track=track)
                 g = c["grade"]
                 files = {**fp["files"], **((g.get("fingerprint") or {}).get("files") or fp.get("grading_files") or {})}
-                settings = {**fp["settings"],
-                            "judge_model": g.get("judge_model") or models[cfg["roles"]["judge"]],
-                            "judge_effort": g.get("judge_effort") or effort.get("judge")}
+                settings = {
+                    **fp["settings"],
+                    "judge_model": g.get("judge_model") or models[cfg["roles"]["judge"]],
+                    "judge_effort": g.get("judge_effort") or effort.get("judge"),
+                }
             else:
                 # Without a fingerprint nothing says what this run was tested
                 # on, so it stays on its own.
                 ver = f"run:{run}"
                 files = {}
-                settings = {"buyer_model": models[cfg["roles"]["buyer"]], "buyer_effort": effort.get("buyer"),
-                            "judge_model": models[cfg["roles"]["judge"]], "judge_effort": effort.get("judge")}
+                settings = {
+                    "buyer_model": models[cfg["roles"]["buyer"]],
+                    "buyer_effort": effort.get("buyer"),
+                    "judge_model": models[cfg["roles"]["judge"]],
+                    "judge_effort": effort.get("judge"),
+                }
             v = versions.setdefault(ver, {"id": ver, "files": files, "settings": settings, "runs": [], "sources": []})
             if run not in v["runs"]:
                 v["runs"].append(run)
@@ -113,10 +128,14 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
         v["first"] = min(created[r] for r in v["runs"])
         v["last"] = max(created[r] for r in v["runs"])
         prev = next((p for p in reversed(ordered[:i]) if p["files"]), None) if v["files"] else None
-        v["changed"] = sorted(
-            [k for k in v["files"] if prev and prev["files"].get(k) != v["files"][k]]
-            + [k for k in v["settings"] if prev and prev["settings"].get(k) != v["settings"][k]]
-        ) if prev else None
+        v["changed"] = (
+            sorted(
+                [k for k in v["files"] if prev and prev["files"].get(k) != v["files"][k]]
+                + [k for k in v["settings"] if prev and prev["settings"].get(k) != v["settings"][k]]
+            )
+            if prev
+            else None
+        )
 
     if not dimensions:
         dimensions = list(loaders.load_rubric(track=loaders.track_of(loaders.load_config()))["dimensions"])

@@ -103,15 +103,25 @@ def grade_all(llm: LLM, cfg: dict, run_dir: Path, force: bool = False, log=print
 
     log(f"Grading {len(jobs)} calls (judge: {judge_model})...")
     grade_fp = fingerprint.grading(
-        judge_model, cfg["effort"]["judge"], buyer_model,
-        fingerprint.grading_files(track=track), backend_of(cfg), track=track,
+        judge_model,
+        cfg["effort"]["judge"],
+        buyer_model,
+        fingerprint.grading_files(track=track),
+        backend_of(cfg),
+        track=track,
     )
 
     def work(job):
         path, call = job
         call["grade"] = grade_call(
-            call, personas[call["persona"]], llm, buyer_model, judge_model, rubric,
-            judge_effort=cfg["effort"]["judge"], track=track,
+            call,
+            personas[call["persona"]],
+            llm,
+            buyer_model,
+            judge_model,
+            rubric,
+            judge_effort=cfg["effort"]["judge"],
+            track=track,
         )
         call["grade"]["judge_model"] = judge_model
         call["grade"]["judge_effort"] = cfg["effort"]["judge"]
@@ -182,12 +192,15 @@ def _parallel(fn, jobs, workers, log, run_dir: Path, stage: str) -> None:
 
 
 def write_run_meta(cfg: dict, run_dir: Path, mock: bool, *, track: str) -> None:
-    fp = fingerprint.record(cfg, loaders.load_personas(cfg["run"]["personas"], track=track),
-                            cfg["run"]["seller_prompts"], track=track)
+    fp = fingerprint.record(
+        cfg, loaders.load_personas(cfg["run"]["personas"], track=track), cfg["run"]["seller_prompts"], track=track
+    )
     meta_path = run_dir / "run.json"
     if not meta_path.exists():
-        _save(meta_path, {"created": datetime.now().isoformat(timespec="seconds"), "mock": mock, "config": cfg,
-                          "fingerprint": fp})
+        _save(
+            meta_path,
+            {"created": datetime.now().isoformat(timespec="seconds"), "mock": mock, "config": cfg, "fingerprint": fp},
+        )
         return
     # Resuming. Calls made on different files would be a different test, so
     # refuse rather than mix them into one run.
@@ -197,7 +210,9 @@ def write_run_meta(cfg: dict, run_dir: Path, mock: bool, *, track: str) -> None:
         return
     changed = fingerprint.differences(old, fp)
     if changed:
-        raise SystemExit(f"Can't resume {run_dir.name}: these changed since it started: {', '.join(changed)}. "
-                         "Start a new run instead.")
+        raise SystemExit(
+            f"Can't resume {run_dir.name}: these changed since it started: {', '.join(changed)}. "
+            "Start a new run instead."
+        )
     meta["fingerprint"] = fingerprint.merge(old, fp)
     _save(meta_path, meta)
