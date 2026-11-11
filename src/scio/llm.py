@@ -8,7 +8,7 @@ Everything else in the project talks to an `LLM` object with two methods:
 Both return a `Usage` record so we can track tokens, cost, latency, which
 model actually served the request, and why the response stopped.
 
-Notes for current models (Opus 5.5, Sonnet 5.5, Haiku 5.5):
+Notes for current models (Fable 5.2, Opus 5.5, Sonnet 5.5, Haiku 5.5):
 - Sampling parameters like temperature are not accepted, so we don't send them.
 - Adaptive thinking is on by default and its tokens count toward max_tokens,
   so max_tokens is set with headroom and `effort` controls how much it thinks.
