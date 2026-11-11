@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blind error analysis</title>
+<style>
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #1d1d1f; background: #f5f5f7; line-height: 1.4; }
+  header.top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 20px; background: #fff; border-bottom: 1px solid #d2d2d7; }
+  header.top h1 { font-size: 16px; margin: 0; }
+  .progress { font-size: 14px; color: #424245; }
+  .top-actions { display: flex; align-items: center; gap: 12px; }
+  .status { font-size: 13px; color: #6e6e73; min-width: 10em; text-align: right; }
+  .status.error { color: #b3261e; }
+  main.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; max-width: 1240px; margin: 16px auto; padding: 0 16px; }
+  @media (max-width: 900px) { main.layout { grid-template-columns: 1fr; } }
+  .panel { background: #fff; border-radius: 12px; padding: 16px 18px; }
+  .call-head h2 { margin: 0 0 4px; font-size: 20px; }
+  .partner { font-size: 15px; font-weight: 600; }
+  .context { font-size: 14px; color: #424245; margin: 4px 0 0; }
+  .meta { font-size: 13px; color: #6e6e73; margin-top: 6px; }
+  .transcript { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .turn { max-width: 88%; padding: 10px 12px; border-radius: 12px; border: 2px solid transparent; }
+  .turn.buyer { align-self: flex-start; background: #f0f0f2; }
+  .turn.seller { align-self: flex-end; background: #e5f0ff; cursor: pointer; }
+  .turn.seller:focus-visible { outline: 3px solid #0a84ff; outline-offset: 2px; }
+  .turn.marked { border-color: #d98e04; background: #fff3d1; }
+  .turn.later { opacity: 0.45; }
+  .turn-head { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #6e6e73; margin-bottom: 4px; }
+  .turn-text { white-space: pre-wrap; font-size: 15px; }
+  aside.side { align-self: start; position: sticky; top: 72px; display: flex; flex-direction: column; gap: 12px; }
+  .side-stack { display: flex; flex-direction: column; gap: 10px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #424245; margin-bottom: 4px; }
+  textarea, input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid #c7c7cc; border-radius: 8px; background: #fff; color: inherit; }
+  textarea { resize: vertical; min-height: 64px; }
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #c7c7cc; background: #fff; color: #1d1d1f; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #0a84ff; outline-offset: 1px; }
+  #pass-btn[aria-pressed="true"] { background: #1f7a3a; border-color: #1f7a3a; color: #fff; }
+  #fail-btn[aria-pressed="true"] { background: #b3261e; border-color: #b3261e; color: #fff; }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav button { flex: 1 1 auto; }
+  .hint { font-size: 13px; color: #424245; margin: 8px 0 0; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  pre.brief { white-space: pre-wrap; font: 13px/1.45 ui-monospace, Menlo, monospace; max-height: 320px; overflow: auto; background: #f5f5f7; padding: 10px; border-radius: 8px; margin: 10px 0 0; }
+  dl.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 13px; margin: 10px 0 0; }
+  dl.keys dd { margin: 0; color: #424245; }
+  kbd { font: 12px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px solid #c7c7cc; border-radius: 4px; background: #f5f5f7; }
+  #summary-view { max-width: 1240px; margin: 16px auto; padding: 0 16px; }
+  .sum-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .sum-head h2 { margin: 0; font-size: 20px; }
+  #summary-view table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 18px; }
+  #summary-view th, #summary-view td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e5ea; vertical-align: top; }
+  #summary-view h3 { font-size: 15px; margin: 18px 0 0; }
+  .call-link { background: none; border: none; padding: 0; color: #0066cc; text-decoration: underline; cursor: pointer; font: inherit; }
+  .fatal { max-width: 720px; margin: 40px auto; padding: 20px; background: #fff; border-radius: 12px; color: #b3261e; font-size: 15px; }
+</style>
+</head>
+<body>
+<noscript><p class="fatal">This page needs JavaScript.</p></noscript>
+
+<header class="top">
+  <div>
+    <h1>Blind error analysis</h1>
+    <div class="progress" id="progress"></div>
+  </div>
+  <div class="top-actions">
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+    <button type="button" id="summary-btn">Summary (s)</button>
+  </div>
+</header>
+
+<main class="layout" id="call-view">
+  <section class="panel" aria-label="Call">
+    <div class="call-head">
+      <h2 id="call-title"></h2>
+      <div class="partner" id="partner-line"></div>
+      <p class="context" id="call-context"></p>
+      <div class="meta" id="seller-line"></div>
+    </div>
+    <div class="transcript" id="transcript" aria-label="Transcript"></div>
+  </section>
+
+  <aside class="side" aria-label="Labels">
+    <details class="panel" id="brief-panel">
+      <summary>Partner's private brief</summary>
+      <pre class="brief" id="brief-text"></pre>
+    </details>
+
+    <div class="panel">
+      <div class="verdict">
+        <button type="button" id="pass-btn" aria-pressed="false">Pass (p)</button>
+        <button type="button" id="fail-btn" aria-pressed="false">Fail (f)</button>
+      </div>
+      <p class="hint" id="mark-hint"></p>
+    </div>
+
+    <div class="panel side-stack">
+      <div>
+        <label for="first-note">First failure note (n)</label>
+        <textarea id="first-note" rows="3"></textarea>
+      </div>
+      <div>
+        <label for="category">Failure category (c)</label>
+        <input id="category" type="text" list="categories" autocomplete="off" maxlength="120">
+        <datalist id="categories"></datalist>
+      </div>
+      <div>
+        <label for="other-notes">Other notes</label>
+        <textarea id="other-notes" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="panel nav">
+      <button type="button" id="prev-btn">Previous (k)</button>
+      <button type="button" id="next-btn">Next (j)</button>
+      <button type="button" id="unlabeled-btn">Next unlabeled (u)</button>
+    </div>
+
+    <details class="panel">
+      <summary>Keyboard shortcuts</summary>
+      <dl class="keys">
+        <dt><kbd>p</kbd> <kbd>f</kbd></dt><dd>pass or fail (press again to clear)</dd>
+        <dt><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dt><dd>move between seller turns</dd>
+        <dt><kbd>x</kbd></dt><dd>mark or clear the first failure at the focused seller turn</dd>
+        <dt><kbd>n</kbd> <kbd>c</kbd></dt><dd>focus the failure note or the category</dd>
+        <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>next or previous call (arrow keys also work)</dd>
+        <dt><kbd>u</kbd></dt><dd>next unlabeled call</dd>
+        <dt><kbd>s</kbd></dt><dd>summary</dd>
+        <dt><kbd>Esc</kbd></dt><dd>leave a text field</dd>
+      </dl>
+    </details>
+  </aside>
+</main>
+
+<section id="summary-view" hidden aria-label="Summary">
+  <div class="panel">
+    <div class="sum-head">
+      <h2>Summary</h2>
+      <button type="button" id="back-btn">Back to calls (s)</button>
+    </div>
+    <p id="summary-totals"></p>
+    <h3>Failure categories</h3>
+    <table>
+      <thead><tr><th>Category</th><th>Count</th><th>Calls</th></tr></thead>
+      <tbody id="categories-body"></tbody>
+    </table>
+    <h3>Failures by seller turn</h3>
+    <table>
+      <thead><tr><th>Seller turn</th><th>Count</th></tr></thead>
+      <tbody id="turns-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="fatal" id="fatal" hidden></div>
+
+<script>
+"use strict";
+(function () {
+  var token = new URLSearchParams(window.location.search).get("token") || "";
+  var calls = [];
+  var progress = { labeled: 0, total: 0 };
+  var current = 0;
+  var focusTurn = null;
+  var summaryOpen = false;
+  var pending = null;
+  var saveSeq = 0;
+
+  function $(id) { return document.getElementById(id); }
+
+  function setStatus(text, isError) {
+    var status = $("status");
+    status.textContent = text;
+    status.className = isError ? "status error" : "status";
+  }
+
+  function api(path, method, body) {
+    var options = { method: method || "GET", headers: { "X-Scio-Token": token } };
+    if (body !== undefined) {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(body);
+    }
+    return fetch(path, options).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
+        if (!response.ok) {
+          throw new Error(data.error || ("Request failed with status " + response.status + "."));
+        }
+        return data;
+      });
+    });
+  }
+
+  function currentCall() { return calls[current]; }
+
+  function markedTurn(call) {
+    var value = call.label.first_failure_turn;
+    return value === "" ? null : parseInt(value, 10);
+  }
+
+  function sellerNumbers(call) {
+    return call.turns
+      .filter(function (turn) { return turn.seller_turn !== null; })
+      .map(function (turn) { return turn.seller_turn; });
+  }
+
+  function setPressed(button, pressed) {
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+  }
+
+  function updateProgress() {
+    $("progress").textContent = progress.labeled + " of " + progress.total + " labeled";
+  }
+
+  function renderMarkHint() {
+    var marked = markedTurn(currentCall());
+    $("mark-hint").textContent = marked === null
+      ? "No first failure marked. Click a seller turn or press x."
+      : "First failure: seller turn " + marked + ".";
+  }
+
+  function renderLabels() {
+    var label = currentCall().label;
+    setPressed($("pass-btn"), label.your_pass_fail === "pass");
+    setPressed($("fail-btn"), label.your_pass_fail === "fail");
+    $("first-note").value = label.first_failure_note;
+    $("category").value = label.failure_category;
+    $("other-notes").value = label.other_notes;
+    renderMarkHint();
+  }
+
+  function focusSeller(number) {
+    var node = document.querySelector('.turn.seller[data-seller-turn="' + number + '"]');
+    if (node) { node.focus(); }
+  }
+
+  function renderTranscript() {
+    var call = currentCall();
+    var marked = markedTurn(call);
+    var markedIndex = -1;
+    call.turns.forEach(function (turn, index) {
+      if (turn.seller_turn !== null && turn.seller_turn === marked) { markedIndex = index; }
+    });
+    var box = $("transcript");
+    box.textContent = "";
+    call.turns.forEach(function (turn, index) {
+      var node = document.createElement("div");
+      node.className = "turn " + turn.speaker;
+      if (markedIndex >= 0 && index > markedIndex) { node.classList.add("later"); }
+      var head = document.createElement("div");
+      head.className = "turn-head";
+      var text = document.createElement("div");
+      text.className = "turn-text";
+      text.textContent = turn.text;
+      if (turn.speaker === "seller") {
+        var number = turn.seller_turn;
+        head.textContent = "Seller turn " + number;
+        node.dataset.sellerTurn = String(number);
+        node.tabIndex = 0;
+        node.setAttribute("role", "button");
+        var isMarked = number === marked;
+        node.setAttribute("aria-pressed", isMarked ? "true" : "false");
+        if (isMarked) { node.classList.add("marked"); }
+        node.addEventListener("click", function () { toggleMark(number); });
+        node.addEventListener("focus", function () { focusTurn = number; });
+      } else {
+        head.textContent = "Partner";
+      }
+      node.appendChild(head);
+      node.appendChild(text);
+      box.appendChild(node);
+    });
+  }
+
+  function moveFocus(step) {
+    var numbers = sellerNumbers(currentCall());
+    if (numbers.length === 0) { return; }
+    var at = numbers.indexOf(focusTurn);
+    var next = at < 0 ? 0 : Math.min(numbers.length - 1, Math.max(0, at + step));
+    focusTurn = numbers[next];
+    focusSeller(focusTurn);
+  }
+
+  function toggleMark(number) {
+    var call = currentCall();
+    call.label.first_failure_turn = markedTurn(call) === number ? "" : String(number);
+    focusTurn = number;
+    renderTranscript();
+    renderMarkHint();
+    focusSeller(number);
+    saveNow(call);
+  }
+
+  function togglePass(value) {
+    var call = currentCall();
+    call.label.your_pass_fail = call.label.your_pass_fail === value ? "" : value;
+    setPressed($("pass-btn"), call.label.your_pass_fail === "pass");
+    setPressed($("fail-btn"), call.label.your_pass_fail === "fail");
+    saveNow(call);
+  }
+
+  function saveNow(call) {
+    if (pending && pending.call === call) {
+      clearTimeout(pending.timer);
+      pending = null;
+    }
+    var seq = ++saveSeq;
+    var body = { call_id: call.call_id };
+    Object.keys(call.label).forEach(function (key) { body[key] = call.label[key]; });
+    setStatus("Saving...", false);
+    api("/api/label", "POST", body).then(function (data) {
+      progress = data.progress;
+      updateProgress();
+      if (seq === saveSeq) { setStatus("Saved", false); }
+    }).catch(function (error) {
+      setStatus("Not saved: " + error.message, true);
+    });
+  }
+
+  function flushPending() {
+    if (!pending) { return; }
+    var call = pending.call;
+    clearTimeout(pending.timer);
+    pending = null;
+    saveNow(call);
+  }
+
+  function scheduleSave(call) {
+    if (pending && pending.call !== call) { flushPending(); }
+    if (pending) { clearTimeout(pending.timer); }
+    var entry = { call: call, timer: null };
+    entry.timer = setTimeout(function () {
+      if (pending === entry) {
+        pending = null;
+        saveNow(call);
+      }
+    }, 600);
+    pending = entry;
+    setStatus("Editing...", false);
+  }
+
+  [["first-note", "first_failure_note"], ["category", "failure_category"], ["other-notes", "other_notes"]]
+    .forEach(function (pair) {
+      var input = $(pair[0]);
+      input.addEventListener("input", function () {
+        var call = currentCall();
+        call.label[pair[1]] = input.value;
+        scheduleSave(call);
+      });
+      input.addEventListener("blur", flushPending);
+    });
+
+  function render() {
+    var call = currentCall();
+    if (!call) { return; }
+    $("call-title").textContent = "Call " + call.n + " of " + calls.length;
+    updateProgress();
+    var partner = call.partner;
+    $("partner-line").textContent = partner.name + ", " + partner.title + ", " + partner.company;
+    $("call-context").textContent = partner.call_context || "";
+    $("seller-line").textContent = "Seller model: " + call.seller_model + "   |   Seller prompt: " + call.seller_prompt;
+    $("brief-text").textContent = call.partner_private_brief;
+    var marked = markedTurn(call);
+    focusTurn = marked !== null ? marked : (sellerNumbers(call)[0] || null);
+    renderTranscript();
+    renderLabels();
+  }
+
+  function indexFromHash() {
+    var match = /^#call=(\d+)$/.exec(window.location.hash);
+    var n = match ? parseInt(match[1], 10) : 1;
+    var found = -1;
+    calls.forEach(function (call, index) {
+      if (call.n === n) { found = index; }
+    });
+    return found >= 0 ? found : 0;
+  }
+
+  function go(index) {
+    if (index < 0 || index >= calls.length) { return; }
+    flushPending();
+    current = index;
+    if (summaryOpen) { setSummary(false); }
+    window.history.replaceState(null, "", "#call=" + calls[current].n);
+    render();
+  }
+
+  function nextUnlabeled() {
+    for (var step = 1; step <= calls.length; step++) {
+      var index = (current + step) % calls.length;
+      if (!calls[index].label.your_pass_fail) {
+        go(index);
+        return;
+      }
+    }
+    setStatus("Every call is labeled.", false);
+  }
+
+  function fillDatalist(categories) {
+    var list = $("categories");
+    list.textContent = "";
+    categories.forEach(function (item) {
+      var option = document.createElement("option");
+      option.value = item.category;
+      list.appendChild(option);
+    });
+  }
+
+  function cell(text) {
+    var td = document.createElement("td");
+    td.textContent = text;
+    return td;
+  }
+
+  function renderSummary(data) {
+    $("summary-totals").textContent = data.progress.labeled + " of " + data.progress.total
+      + " labeled. Pass: " + data.pass + ". Fail: " + data.fail + ".";
+    var body = $("categories-body");
+    body.textContent = "";
+    if (data.categories.length === 0) {
+      var none = document.createElement("tr");
+      none.appendChild(cell("No failure categories yet."));
+      body.appendChild(none);
+    }
+    data.categories.forEach(function (item) {
+      var row = document.createElement("tr");
+      row.appendChild(cell(item.category));
+      row.appendChild(cell(String(item.count)));
+      var calls_td = document.createElement("td");
+      item.calls.forEach(function (n, i) {
+        if (i > 0) { calls_td.appendChild(document.createTextNode(", ")); }
+        var link = document.createElement("button");
+        link.type = "button";
+        link.className = "call-link";
+        link.textContent = String(n);
+        link.addEventListener("click", function () { jumpTo(n); });
+        calls_td.appendChild(link);
+      });
+      row.appendChild(calls_td);
+      body.appendChild(row);
+    });
+    var turns = $("turns-body");
+    turns.textContent = "";
+    if (data.failures_by_turn.length === 0) {
+      var empty = document.createElement("tr");
+      empty.appendChild(cell("No failures marked yet."));
+      turns.appendChild(empty);
+    }
+    data.failures_by_turn.forEach(function (item) {
+      var row = document.createElement("tr");
+      row.appendChild(cell(String(item.turn)));
+      row.appendChild(cell(String(item.count)));
+      turns.appendChild(row);
+    });
+  }
+
+  function loadSummary() {
+    api("/api/summary").then(function (data) {
+      fillDatalist(data.categories);
+      renderSummary(data);
+    }).catch(function (error) {
+      setStatus("Could not load the summary: " + error.message, true);
+    });
+  }
+
+  function setSummary(open) {
+    summaryOpen = open;
+    $("call-view").hidden = open;
+    $("summary-view").hidden = !open;
+    if (open) { loadSummary(); }
+  }
+
+  function jumpTo(n) {
+    for (var index = 0; index < calls.length; index++) {
+      if (calls[index].n === n) {
+        setSummary(false);
+        go(index);
+        return;
+      }
+    }
+  }
+
+  $("summary-btn").addEventListener("click", function () { setSummary(!summaryOpen); });
+  $("back-btn").addEventListener("click", function () { setSummary(false); });
+  $("pass-btn").addEventListener("click", function () { togglePass("pass"); });
+  $("fail-btn").addEventListener("click", function () { togglePass("fail"); });
+  $("prev-btn").addEventListener("click", function () { go(current - 1); });
+  $("next-btn").addEventListener("click", function () { go(current + 1); });
+  $("unlabeled-btn").addEventListener("click", nextUnlabeled);
+
+  document.addEventListener("keydown", function (event) {
+    var target = event.target;
+    var tag = target && target.tagName;
+    var typing = tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT" || (target && target.isContentEditable);
+    if (typing) {
+      if (event.key === "Escape") { target.blur(); }
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) { return; }
+    if (summaryOpen) {
+      if (event.key === "s" || event.key === "Escape") {
+        setSummary(false);
+        event.preventDefault();
+      }
+      return;
+    }
+    if (!currentCall()) { return; }
+    var handled = true;
+    switch (event.key) {
+      case "p": togglePass("pass"); break;
+      case "f": togglePass("fail"); break;
+      case "n": $("first-note").focus(); break;
+      case "c": $("category").focus(); break;
+      case "j":
+      case "ArrowRight": go(current + 1); break;
+      case "k":
+      case "ArrowLeft": go(current - 1); break;
+      case "u": nextUnlabeled(); break;
+      case "x": if (focusTurn !== null) { toggleMark(focusTurn); } break;
+      case "ArrowDown": moveFocus(1); break;
+      case "ArrowUp": moveFocus(-1); break;
+      case "s": setSummary(true); break;
+      default: handled = false;
+    }
+    if (handled) { event.preventDefault(); }
+  });
+
+  window.addEventListener("hashchange", function () {
+    var index = indexFromHash();
+    if (index !== current) { go(index); }
+  });
+  window.addEventListener("beforeunload", flushPending);
+
+  function showFatal(message) {
+    var box = $("fatal");
+    box.textContent = message;
+    box.hidden = false;
+    $("call-view").hidden = true;
+  }
+
+  Promise.all([api("/api/calls"), api("/api/summary")]).then(function (results) {
+    calls = results[0].calls;
+    progress = results[0].progress;
+    fillDatalist(results[1].categories);
+    if (calls.length === 0) {
+      showFatal("This labeling set has no calls.");
+      return;
+    }
+    current = indexFromHash();
+    window.history.replaceState(null, "", "#call=" + calls[current].n);
+    updateProgress();
+    render();
+  }).catch(function (error) {
+    showFatal("Could not load the labeling set: " + error.message
+      + " Open the link that scio annotate printed. It includes the token.");
+  });
+})();
+</script>
+</body>
+</html>

@@ -247,6 +247,31 @@ Label the sheet first, then open the key. The folder's README gives the steps. O
 then use `scio label` and `scio calibrate`, so you compare two judgments you made
 yourself.
 
+### Annotating calls
+
+`scio annotate` serves the blinded set as a local page, one call at a time, and
+saves each label into `error_analysis/labeling_sheet.csv` as you go. It listens on
+127.0.0.1 only. To use it from another machine, forward the port over SSH:
+
+```bash
+# on the machine that holds the run
+scio annotate results/<timestamp>
+
+# on your laptop, in a separate terminal; keep it open while you label
+ssh -L 8765:127.0.0.1:8765 <your user>@<the machine's hostname or Tailscale name>
+```
+
+For example, `ssh -L 8765:127.0.0.1:8765 agents@rodrigos-mac-mini-1` works over
+Tailscale. Then open `http://localhost:8765/?token=...` on the laptop, using the link
+the command printed. Each start prints a new token, and every request needs it. Use
+`--port` to pick another port, and change the tunnel to match. Ctrl+C stops the
+server, and closing the SSH session stops the tunnel.
+
+The page's legend lists the keys. In short: `p` and `f` set pass or fail, `x` marks
+the first failure at the focused seller turn, `j` and `k` move between calls, `u`
+jumps to the next unlabeled call, and `s` opens the summary. A sheet from an older
+version is upgraded in place when the page opens it, and its values are kept.
+
 ## Jev as a shadow judge
 
 Jev is a TypeSafe AI decision model that scores each call alongside the Opus

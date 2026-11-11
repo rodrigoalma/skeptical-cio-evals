@@ -9,8 +9,11 @@ only show agreement, not what went wrong.
 from __future__ import annotations
 
 import csv
+import os
 import random
+import tempfile
 from pathlib import Path
+from typing import Any
 
 from . import loaders
 from .runner import load_calls
@@ -18,6 +21,7 @@ from .simulate import format_transcript
 
 OUT_NAME = "error_analysis"
 DEFAULT_SEED = 7
+SHEET_NAME = "labeling_sheet.csv"
 SHEET_FIELDS = [
     "n",
     "call_id",
@@ -27,8 +31,20 @@ SHEET_FIELDS = [
     "transcript_file",
     "your_pass_fail",
     "first_failure_note",
+    "failure_category",
+    "first_failure_turn",
     "other_notes",
 ]
+# The columns a labeler fills in. Everything else in the sheet describes the call.
+LABEL_FIELDS = ("your_pass_fail", "first_failure_note", "failure_category", "first_failure_turn", "other_notes")
+PASS_FAIL = ("", "pass", "fail")
+TEXT_LIMITS = {"first_failure_note": 2000, "failure_category": 120, "other_notes": 2000}
+
+
+class LabelError(ValueError):
+    """A label the sheet won't take. The message is safe to show the labeler."""
+
+
 KEY_FIELDS = ["n", "call_id", "judge_passed", "weighted_score"]
 
 
@@ -154,7 +170,81 @@ def write(run_dir: Path, *, track: str, n: int | None = None, seed: int = DEFAUL
             }
         )
 
-    _write_csv(out / "labeling_sheet.csv", SHEET_FIELDS, sheet)
+    _write_csv(out / SHEET_NAME, SHEET_FIELDS, sheet)
     _write_csv(out / "selection_key.csv", KEY_FIELDS, key)
     (out / "README.md").write_text(_readme(run_dir.name, len(chosen), n, seed), encoding="utf-8")
+    return out
+
+
+def read_sheet(path: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """The sheet's columns and rows. Schema columns missing from an older sheet come back empty.
+
+    Columns this version doesn't know are kept, so nothing typed into the sheet is lost.
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        existing = list(reader.fieldnames or [])
+        rows = [{k: ("" if v is None else v) for k, v in r.items() if k is not None} for r in reader]
+    columns = SHEET_FIELDS + [name for name in existing if name not in SHEET_FIELDS]
+    for row in rows:
+        for name in columns:
+            row.setdefault(name, "")
+    return columns, rows
+
+
+def write_sheet(path: Path, columns: list[str], rows: list[dict[str, str]]) -> None:
+    """Replace the sheet in one step: write a temp file beside it, then swap it in."""
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.chmod(tmp_name, 0o644)
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def upgrade_sheet(path: Path) -> bool:
+    """Bring an older sheet up to the current columns. Values and row order are kept."""
+    with open(path, newline="", encoding="utf-8") as f:
+        header = next(csv.reader(f), [])
+    columns, rows = read_sheet(path)
+    if header == columns:
+        return False
+    write_sheet(path, columns, rows)
+    return True
+
+
+def validate_label(label: dict[str, Any], seller_turns: int) -> dict[str, str]:
+    """Check one call's label fields and return them as sheet strings."""
+    missing = [name for name in LABEL_FIELDS if name not in label]
+    unknown = [name for name in label if name not in LABEL_FIELDS]
+    if missing:
+        raise LabelError(f"Missing label field(s): {', '.join(missing)}.")
+    if unknown:
+        raise LabelError(f"Unknown label field(s): {', '.join(unknown)}.")
+    verdict = label["your_pass_fail"]
+    if verdict not in PASS_FAIL:
+        raise LabelError('your_pass_fail must be "", "pass" or "fail".')
+    out: dict[str, str] = {"your_pass_fail": verdict}
+    for name, limit in TEXT_LIMITS.items():
+        text = label[name]
+        if not isinstance(text, str):
+            raise LabelError(f"{name} must be text.")
+        text = text.strip()
+        if len(text) > limit:
+            raise LabelError(f"{name} is longer than {limit} characters.")
+        out[name] = text
+    turn = label["first_failure_turn"]
+    if turn is None or turn == "":
+        out["first_failure_turn"] = ""
+    elif isinstance(turn, bool) or not isinstance(turn, int):
+        raise LabelError("first_failure_turn must be a whole number or empty.")
+    elif not 1 <= turn <= seller_turns:
+        raise LabelError(f"first_failure_turn must be between 1 and {seller_turns} for this call.")
+    else:
+        out["first_failure_turn"] = str(turn)
     return out

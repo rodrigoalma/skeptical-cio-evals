@@ -9,20 +9,23 @@ scio report RUN_DIR      rebuild report.md and viewer.html
 scio label RUN_DIR       hand-grade calls for judge calibration
 scio calibrate RUN_DIR   compare the judge with your labels
 scio blind RUN_DIR       transcripts without grades, for blind error analysis
+scio annotate RUN_DIR    label blinded calls in a local web page on this machine
 scio personas            list buyer personas
 """
 
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import shutil
+import socket
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from . import blind, dashboard, loaders, report, runner, smoke
+from . import annotate, blind, dashboard, loaders, report, runner, smoke
 from . import calibrate as cal
 from .llm import BACKENDS, DEFAULT_BACKEND, AccountError, backend_of, make_llm
 
@@ -214,6 +217,29 @@ def cmd_blind(args) -> None:
     print(f"Blinded set: {out}\nStart with {out / 'README.md'}.")
 
 
+def cmd_annotate(args) -> None:
+    if not 1 <= args.port <= 65535:
+        sys.exit(f"--port must be between 1 and 65535, not {args.port}.")
+    if not args.host.strip():
+        sys.exit("--host can't be empty. Use 127.0.0.1 to keep the page on this machine.")
+    run_dir = Path(args.run_dir)
+    cfg, _ = _meta_cfg(run_dir)
+    track = loaders.track_of(cfg)
+    _check_track(track)
+    store = annotate.Store(run_dir, track=track)
+    token = annotate.new_token()
+    try:
+        server = annotate.make_server(store, host=args.host, port=args.port, token=token)
+    except OSError as error:
+        sys.exit(f"Can't listen on {args.host}:{args.port}: {error}")
+    print(f"Labeling set: {store.folder}", flush=True)
+    print("Open: " + annotate.page_url(args.host, args.port, token), flush=True)
+    print(annotate.tunnel_hint(args.port, getpass.getuser(), socket.gethostname()), flush=True)
+    print("Press Ctrl+C to stop.", flush=True)
+    annotate.serve(server)
+    print("Stopped.", flush=True)
+
+
 def cmd_smoke(args) -> None:
     cfg = loaders.load_config()
     cfg["track"] = args.track or loaders.track_of(cfg)
@@ -305,6 +331,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--n", type=int, help="Sample this many graded calls (default: all graded, non-truncated calls)")
     p.add_argument("--seed", type=int, default=blind.DEFAULT_SEED, help="Seed for the sample and the order")
     p.set_defaults(fn=cmd_blind)
+
+    p = sub.add_parser("annotate", help="Label blinded calls in a local web page.")
+    p.add_argument("run_dir")
+    p.add_argument(
+        "--host", default="127.0.0.1", help="Address to listen on. Keep 127.0.0.1 and reach it over an SSH tunnel."
+    )
+    p.add_argument("--port", type=int, default=8765, help="Port to listen on")
+    p.set_defaults(fn=cmd_annotate)
 
     p = sub.add_parser("personas", help="List buyer personas.")
     p.add_argument("--track", choices=loaders.available_tracks(), help="Scenario track from config.yaml")
