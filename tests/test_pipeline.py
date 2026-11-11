@@ -205,6 +205,29 @@ def test_mock_call_ends_and_records_usage():
     assert "[END_CALL]" not in json.dumps(call["turns"])
 
 
+def test_mock_buyer_ends_every_track_call():
+    # The mock tells buyer from seller by the [END_CALL] token in the system
+    # prompt. A track whose buyer prompt lost that token would get seller lines
+    # from the mock and never end the call, so check every track end to end.
+    for track in loaders.available_tracks():
+        buyer_prompt = loaders.render("buyer", track=track, persona_public="", persona_hidden="")
+        assert "[END_CALL]" in buyer_prompt, track
+        persona = next(iter(loaders.load_personas(track=track).values()))
+        call = run_call(
+            MockLLM(),
+            persona,
+            loaders.seller_prompt_names(track=track)[0],
+            "claude-haiku-5-5",
+            "claude-sonnet-5-5",
+            max_seller_turns=8,
+            track=track,
+        )
+        buyer_replies = {t["text"] for t in call["turns"][1:] if t["speaker"] == "buyer"}
+        assert call["ended_by"] == "buyer", track
+        assert buyer_replies and buyer_replies <= set(MockLLM.BUYER_LINES), track
+        assert not buyer_replies & set(MockLLM.SELLER_LINES), track
+
+
 def test_code_metrics():
     m = code_metrics(
         [

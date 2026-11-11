@@ -566,7 +566,9 @@ class MockLLM:
         return random.Random(int(digest[:16], 16))
 
     def complete(self, model, system, messages, max_tokens=4000, effort=None):
-        is_buyer = "role-playing a buyer" in system
+        # Every buyer prompt tells the model to end the call with [END_CALL];
+        # no seller, debrief or judge prompt does.
+        is_buyer = "[END_CALL]" in system
         turn = sum(1 for m in messages if m["role"] == "assistant")
         lines = self.BUYER_LINES if is_buyer else self.SELLER_LINES
         text = lines[min(turn, len(lines) - 1)]
