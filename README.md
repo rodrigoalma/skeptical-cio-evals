@@ -233,6 +233,20 @@ generous than you?), and a weighted kappa per dimension. If a dimension has
 poor agreement, the fix is usually tighter anchors in `rubric.yaml`, then
 `scio grade results/<timestamp> --force` to re-grade.
 
+### Blind error analysis first
+
+Before you compare your labels with the judge's, read the calls without its
+grades. `scio blind` writes the transcripts, a sheet for your own pass/fail notes
+and the first failure you see, and a separate key with the judge's verdicts:
+
+```bash
+scio blind results/<timestamp> --n 20     # or no --n for every graded call
+```
+
+Label the sheet first, then open the key. The folder's README gives the steps. Only
+then use `scio label` and `scio calibrate`, so you compare two judgments you made
+yourself.
+
 ## Jev as a shadow judge
 
 Jev is a TypeSafe AI decision model that scores each call alongside the Opus

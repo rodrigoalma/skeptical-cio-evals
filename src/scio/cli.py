@@ -8,6 +8,7 @@ scio jev RUN_DIR         run Jev as a shadow judge
 scio report RUN_DIR      rebuild report.md and viewer.html
 scio label RUN_DIR       hand-grade calls for judge calibration
 scio calibrate RUN_DIR   compare the judge with your labels
+scio blind RUN_DIR       transcripts without grades, for blind error analysis
 scio personas            list buyer personas
 """
 
@@ -21,8 +22,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from . import blind, dashboard, loaders, report, runner, smoke
 from . import calibrate as cal
-from . import dashboard, loaders, report, runner, smoke
 from .llm import BACKENDS, DEFAULT_BACKEND, AccountError, backend_of, make_llm
 
 RESULTS = loaders.ROOT / "results"
@@ -204,6 +205,15 @@ def cmd_calibrate(args) -> None:
     report.build(run_dir, track=track, cfg=cfg)
 
 
+def cmd_blind(args) -> None:
+    run_dir = Path(args.run_dir)
+    cfg, _ = _meta_cfg(run_dir)
+    track = loaders.track_of(cfg)
+    _check_track(track)
+    out = blind.write(run_dir, track=track, n=args.n, seed=args.seed)
+    print(f"Blinded set: {out}\nStart with {out / 'README.md'}.")
+
+
 def cmd_smoke(args) -> None:
     cfg = loaders.load_config()
     cfg["track"] = args.track or loaders.track_of(cfg)
@@ -289,6 +299,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--labels", default=str(LABELS))
     p.add_argument("--judge", choices=("opus", "jev"), default="opus", help="Judge to compare with human labels")
     p.set_defaults(fn=cmd_calibrate)
+
+    p = sub.add_parser("blind", help="Write transcripts without grades, for blind error analysis.")
+    p.add_argument("run_dir")
+    p.add_argument("--n", type=int, help="Sample this many graded calls (default: all graded, non-truncated calls)")
+    p.add_argument("--seed", type=int, default=blind.DEFAULT_SEED, help="Seed for the sample and the order")
+    p.set_defaults(fn=cmd_blind)
 
     p = sub.add_parser("personas", help="List buyer personas.")
     p.add_argument("--track", choices=loaders.available_tracks(), help="Scenario track from config.yaml")
