@@ -104,7 +104,7 @@ function render() {
     <div class="item ${c.id === current ? "active" : ""}" data-id="${esc(c.id)}">
       <div class="t">${esc(c.persona)}</div>
       <div class="s"><span class="badge ${c.row.passed ? "pass" : "fail"}">${c.row.passed ? "PASS" : "FAIL"}</span>
-        ${esc(c.model)} · ${esc(c.prompt)} · ${esc(c.effort)} · ${c.row.weighted_score.toFixed(2)}</div>
+        ${esc(c.model)} · ${esc(c.prompt)} · ${esc(c.effort)}${c.row.weighted_score === null ? "" : ` · ${c.row.weighted_score.toFixed(2)}`}</div>
     </div>`).join("") || `<p class="muted" style="padding:16px">No calls match.</p>`;
   document.querySelectorAll(".item").forEach((el) => (el.onclick = () => show(el.dataset.id)));
 }
@@ -118,6 +118,11 @@ function show(id) {
   const scores = DATA.dims.map((k) => `
     <div class="row"><span>${esc(k.replace(/_/g, " "))}</span><b>${j.scores[k]}</b></div>
     <div class="bar"><i style="width:${j.scores[k] * 20}%"></i></div>`).join("");
+  const checks = DATA.checks.length ? `<div class="card"><h3>Checks</h3>${DATA.checks.map((k) => {
+    const v = (j.checks || {})[k.id];
+    return `<div class="row"><span>${esc(k.label)}</span><b>${v ? yes(v.passed) : "n/a"}</b></div>
+      ${v ? `<div class="claim">"${esc(v.evidence)}"<br><span class="muted">${esc(k.question)}</span></div>` : ""}`;
+  }).join("")}</div>` : "";
   const claims = (j.unsupported_claims || []).map((cl) => `
     <div class="claim ${esc(cl.severity)}">"${esc(cl.quote)}"<br><span class="muted">${esc(cl.severity)}: ${esc(cl.issue)}</span></div>`).join("")
     || `<p class="muted">None found.</p>`;
@@ -127,7 +132,7 @@ function show(id) {
       <div>
         <div class="card"><h3>Result</h3>
           <div class="row"><span>Passed</span><b>${yes(r.passed)}</b></div>
-          <div class="row"><span>Weighted score</span><b>${r.weighted_score.toFixed(2)}</b></div>
+          ${r.weighted_score === null ? "" : `<div class="row"><span>Weighted score</span><b>${r.weighted_score.toFixed(2)}</b></div>`}
           <div class="row"><span>Talk ratio (seller)</span><b>${r.talk_ratio}</b></div>
           <div class="row"><span>Seller questions</span><b>${r.seller_questions}</b></div>
           <div class="row"><span>Seller cost</span><b>$${r.seller_cost_usd.toFixed(4)}</b></div>
@@ -142,7 +147,8 @@ function show(id) {
           ${d.dealbreaker_detail ? `<p class="muted">Dealbreaker: ${esc(d.dealbreaker_detail)}</p>` : ""}
           <p><i>"${esc(d.comment)}"</i></p>
         </div>
-        <div class="card"><h3>Judge scores</h3>${scores}</div>
+        ${DATA.dims.length ? `<div class="card"><h3>Judge scores</h3>${scores}</div>` : ""}
+        ${checks}
         <div class="card"><h3>Unsupported claims</h3>${claims}</div>
         <div class="card"><h3>Judge notes</h3>
           <p class="muted">Best: ${esc(j.best_moment)}</p>

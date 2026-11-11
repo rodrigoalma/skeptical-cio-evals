@@ -27,7 +27,10 @@ def _write_track(root, name="technical"):
     (track / "data" / "smoke" / "known_cases.yaml").write_text(
         "- id: basic\n  turns:\n    - buyer: hello\n  expect: {}\n", encoding="utf-8"
     )
-    (track / "rubric.yaml").write_text("dimensions: {technical_discovery: {}}\n", encoding="utf-8")
+    (track / "rubric.yaml").write_text(
+        "dimensions: {technical_discovery: {weight: 1.0}}\npass_criteria: {hidden_concern_surfaced: true}\n",
+        encoding="utf-8",
+    )
     (track / "prompts" / "seller_arch.md").write_text("${fact_sheet}", encoding="utf-8")
     (track / "prompts" / "buyer.md").write_text("${persona_public}", encoding="utf-8")
     (track / "prompts" / "judge.md").write_text("${rubric}", encoding="utf-8")

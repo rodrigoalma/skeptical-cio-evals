@@ -21,6 +21,7 @@ TEMPLATE = Path(__file__).with_name("dashboard_template.html")
 
 def _row(call: dict, run: str, ver: str, pricing: dict) -> dict:
     g = call["grade"]
+    judge = g["judge"]
     seller = call["usage"]["seller"]
     return {
         "id": call["id"],
@@ -32,16 +33,19 @@ def _row(call: dict, run: str, ver: str, pricing: dict) -> dict:
         "effort": call.get("seller_effort") or "unrecorded",
         "ok": call.get("status", "ok") == "ok",
         "pass": g["passed"],
+        # None on a track graded only by checks. Shown as n/a, never as 0.
         "score": g["weighted_score"],
-        "scores": g["judge"]["scores"],
+        "scores": judge.get("scores", {}),
         "surfaced": g["debrief"]["hidden_concern_surfaced"],
-        "overpromise": g["judge"]["overpromise"],
+        "addressed": g["debrief"]["hidden_concern_addressed"],
+        "checks": {cid: verdict["passed"] for cid, verdict in judge.get("checks", {}).items()},
+        "overpromise": judge["overpromise"],
         "next_meeting": g["debrief"]["would_take_next_meeting"],
         "cost": round(cost_of(seller, pricing), 6),
         "sec": round(mean(u["seconds"] for u in seller), 2) if seller else 0,
         "claims": [
             {"quote": c["quote"], "issue": c["issue"]}
-            for c in g["judge"]["unsupported_claims"]
+            for c in judge["unsupported_claims"]
             if c.get("severity") == "major"
         ],
     }
@@ -63,6 +67,7 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
     rows, runs, versions = [], [], {}
     persona_h, prompt_h = {}, {}
     dimensions = []
+    checks: dict[str, str] = {}
     for run_dir in run_dirs:
         meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
         calls = [c for c in load_calls(run_dir) if "grade" in c]
@@ -70,9 +75,12 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
             continue
         cfg = meta["config"]
         track = loaders.track_of(cfg)
-        for dimension in loaders.load_rubric(track=track)["dimensions"]:
+        rubric = loaders.load_rubric(track=track)
+        for dimension in rubric.get("dimensions", {}):
             if dimension not in dimensions:
                 dimensions.append(dimension)
+        for check_id, spec in rubric.get("checks", {}).items():
+            checks.setdefault(check_id, loaders.check_label(check_id, spec))
         fp = fingerprint.for_run(run_dir, meta, calls, use_git, track=track)
         run = run_dir.name
         models = cfg["models"]
@@ -137,13 +145,12 @@ def collect(run_dirs: list[Path], pricing: dict, use_git: bool = True) -> dict:
             else None
         )
 
-    if not dimensions:
-        dimensions = list(loaders.load_rubric(track=loaders.track_of(loaders.load_config()))["dimensions"])
     return {
         "runs": runs,
         "versions": ordered,
         "rows": rows,
         "dims": dimensions,
+        "checks": [{"id": cid, "label": label} for cid, label in checks.items()],
         "models": list(loaders.load_config()["models"]),
         "efforts": loaders.EFFORTS,
     }

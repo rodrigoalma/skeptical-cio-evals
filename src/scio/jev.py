@@ -70,6 +70,11 @@ def _account_failure(error: TypeSafeAPIError) -> AccountError | None:
 
 
 def grade_call(call: dict, persona: dict, rubric: dict, *, track: str) -> dict:
+    if "dimensions" not in rubric:
+        raise SystemExit(
+            f"Track {track!r} grades with yes/no checks, not 1 to 5 dimensions, so Jev has no scores to check. "
+            "Use `scio annotate` for binary labels."
+        )
     state = build_state(call, persona, track=track)
     specs = _question_specs(rubric)
     questions = _questions(specs)

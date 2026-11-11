@@ -108,8 +108,19 @@ def track_git_paths(*, track: str) -> tuple[str, ...]:
     return (track_dir_path(track=track).as_posix(),)
 
 
+RUBRIC_FIELDS = ("dimensions", "checks", "pass_criteria")
+# Criteria every rubric may name in pass_criteria. grade.py decides each one.
+BUILT_IN_CRITERIA = ("hidden_concern_surfaced", "hidden_concern_addressed", "no_overpromise")
+THRESHOLD = "min_weighted_score"  # only meaningful with dimensions
+CHECK_FIELDS = ("question", "pass_when", "fail_when")
+CHECK_OPTIONAL_FIELDS = ("label",)  # shown in reports instead of the id, when present
+
+
 def load_rubric(path: Path | None = None, *, track: str) -> dict:
-    return load_yaml(path or ROOT / track_file_path("rubric", track=track))
+    source = path or ROOT / track_file_path("rubric", track=track)
+    rubric = load_yaml(source)
+    _check_rubric(str(source), rubric)
+    return rubric
 
 
 # A partner file can hold several scenarios. Each one becomes its own case, with the
@@ -147,6 +158,77 @@ def _check_items(source: str, where: str, value: Any) -> None:
 def _check_id(source: str, where: str, value: Any) -> None:
     if not isinstance(value, str) or not _ID.fullmatch(value) or SCENARIO_SEP in value:
         _fail(source, f"{where} must use lowercase letters, digits and single underscores, not {value!r}.")
+
+
+def _check_rubric(source: str, rubric: Any) -> None:
+    if not isinstance(rubric, dict):
+        _fail(source, "a rubric is a mapping with pass_criteria and dimensions, checks or both.")
+    unknown = [str(k) for k in rubric if k not in RUBRIC_FIELDS]
+    if unknown:
+        _fail(source, f"unknown top-level field(s): {', '.join(unknown)}.")
+    if "dimensions" not in rubric and "checks" not in rubric:
+        _fail(source, "define dimensions, checks or both.")
+    if "dimensions" in rubric:
+        _check_dimensions(source, rubric["dimensions"])
+    if "checks" in rubric:
+        _check_checks(source, rubric["checks"])
+    check_ids = set(rubric["checks"]) if "checks" in rubric else set()
+    _check_pass_criteria(
+        source, rubric.get("pass_criteria"), has_dimensions="dimensions" in rubric, check_ids=check_ids
+    )
+
+
+def _check_dimensions(source: str, dimensions: Any) -> None:
+    if not isinstance(dimensions, dict) or not dimensions:
+        _fail(source, "dimensions must be a non-empty mapping of dimension name to its settings.")
+    for name, spec in dimensions.items():
+        weight = spec.get("weight") if isinstance(spec, dict) else None
+        if isinstance(weight, bool) or not isinstance(weight, (int, float)) or weight <= 0:
+            _fail(source, f"dimensions.{name} needs a positive numeric weight.")
+
+
+def _check_checks(source: str, checks: Any) -> None:
+    if not isinstance(checks, dict) or not checks:
+        _fail(source, "checks must be a non-empty mapping of check id to question, pass_when and fail_when.")
+    for check_id, spec in checks.items():
+        if not isinstance(check_id, str) or not _ID.fullmatch(check_id):
+            _fail(source, f"check id {check_id!r} must use lowercase letters, digits and underscores, from a letter.")
+        if check_id in BUILT_IN_CRITERIA or check_id == THRESHOLD:
+            _fail(source, f"check id {check_id!r} is the name of a built-in pass criterion. Pick another id.")
+        where = f"checks.{check_id}"
+        if not isinstance(spec, dict):
+            _fail(source, f"{where} must hold {', '.join(CHECK_FIELDS)}.")
+        missing = [f for f in CHECK_FIELDS if f not in spec]
+        if missing:
+            _fail(source, f"{where} is missing {', '.join(missing)}.")
+        unknown = [str(f) for f in spec if f not in (*CHECK_FIELDS, *CHECK_OPTIONAL_FIELDS)]
+        if unknown:
+            _fail(source, f"{where} has unknown field(s): {', '.join(unknown)}.")
+        for field in (*CHECK_FIELDS, *CHECK_OPTIONAL_FIELDS):
+            if field in spec:
+                _check_text(source, f"{where}.{field}", spec[field])
+
+
+def check_label(check_id: str, spec: dict) -> str:
+    """What a check is called in reports: its label if the rubric gives one, else its id read as words."""
+    return spec.get("label") or check_id.replace("_", " ").capitalize()
+
+
+def _check_pass_criteria(source: str, criteria: Any, *, has_dimensions: bool, check_ids: set[str]) -> None:
+    if not isinstance(criteria, dict) or not criteria:
+        _fail(source, "pass_criteria must be a non-empty mapping of criterion to true or false.")
+    for key, value in criteria.items():
+        if key == THRESHOLD:
+            if not has_dimensions:
+                _fail(source, f"{THRESHOLD} needs dimensions. A rubric with only checks passes on its checks.")
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                _fail(source, f"pass_criteria.{THRESHOLD} must be a number.")
+        elif key in BUILT_IN_CRITERIA or key in check_ids:
+            if not isinstance(value, bool):
+                _fail(source, f"pass_criteria.{key} must be true or false.")
+        else:
+            known = ", ".join((*BUILT_IN_CRITERIA, *sorted(check_ids)))
+            _fail(source, f"pass_criteria.{key} is not a built-in criterion or a check in this rubric. Known: {known}.")
 
 
 def expand_persona(p: dict[str, Any], *, source: str) -> list[dict[str, Any]]:

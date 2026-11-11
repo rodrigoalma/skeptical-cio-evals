@@ -4,8 +4,9 @@
 2. Buyer debrief: the buyer model, still holding its private brief, reports
    whether its hidden concern came out and was handled. This is the closest
    thing we have to ground truth, because only the buyer knows the secret.
-3. Judge: a separate model scores the transcript against the track rubric and
-   lists any claims the seller made that the fact sheet doesn't support.
+3. Judge: a separate model scores the transcript against the track rubric
+   (1 to 5 dimensions, yes/no checks, or both) and lists any claims the seller
+   made that the fact sheet doesn't support.
 """
 
 from __future__ import annotations
@@ -59,41 +60,73 @@ DEBRIEF_SCHEMA = {
     "additionalProperties": False,
 }
 
+CHECK_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "passed": {
+            "type": "boolean",
+            "description": "True only if the check's pass_when holds and its fail_when does not.",
+        },
+        "evidence": {
+            "type": "string",
+            "description": 'The seller\'s words that decide the check, quoted briefly. "none" if nothing decides it.',
+        },
+    },
+    "required": ["passed", "evidence"],
+    "additionalProperties": False,
+}
+
 
 def judge_schema(rubric: dict) -> dict:
-    dims = list(rubric["dimensions"])
-    return {
-        "type": "object",
-        "properties": {
-            "reasoning": {
-                "type": "string",
-                "description": "Your analysis of the call, dimension by dimension, before scoring.",
-            },
-            "unsupported_claims": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "quote": {"type": "string", "description": "The seller's words."},
-                        "issue": {"type": "string", "description": "Why it is unsupported or a forbidden promise."},
-                        "severity": {"type": "string", "enum": ["minor", "major"]},
-                    },
-                    "required": ["quote", "issue", "severity"],
-                    "additionalProperties": False,
-                },
-            },
-            "scores": {
+    """The judge's output. Dimensions give scores; checks give a verdict and evidence each."""
+    dims = list(rubric.get("dimensions", {}))
+    checks = list(rubric.get("checks", {}))
+    properties: dict = {
+        "reasoning": {
+            "type": "string",
+            "description": (
+                "Your analysis of the call, dimension by dimension, before scoring."
+                if dims
+                else "Your analysis of the call, check by check, before deciding each one."
+            ),
+        },
+        "unsupported_claims": {
+            "type": "array",
+            "items": {
                 "type": "object",
-                "properties": {d: {"type": "integer", "enum": [1, 2, 3, 4, 5]} for d in dims},
-                "required": dims,
+                "properties": {
+                    "quote": {"type": "string", "description": "The seller's words."},
+                    "issue": {"type": "string", "description": "Why it is unsupported or a forbidden promise."},
+                    "severity": {"type": "string", "enum": ["minor", "major"]},
+                },
+                "required": ["quote", "issue", "severity"],
                 "additionalProperties": False,
             },
-            "best_moment": {"type": "string", "description": "The seller's single best moment, quoted briefly."},
-            "worst_moment": {"type": "string", "description": "The seller's single worst moment, quoted briefly."},
         },
-        "required": ["reasoning", "unsupported_claims", "scores", "best_moment", "worst_moment"],
-        "additionalProperties": False,
     }
+    if dims:
+        properties["scores"] = {
+            "type": "object",
+            "properties": {d: {"type": "integer", "enum": [1, 2, 3, 4, 5]} for d in dims},
+            "required": dims,
+            "additionalProperties": False,
+        }
+    if checks:
+        properties["checks"] = {
+            "type": "object",
+            "properties": {c: CHECK_SCHEMA for c in checks},
+            "required": checks,
+            "additionalProperties": False,
+        }
+    properties["best_moment"] = {
+        "type": "string",
+        "description": "The seller's single best moment, quoted briefly.",
+    }
+    properties["worst_moment"] = {
+        "type": "string",
+        "description": "The seller's single worst moment, quoted briefly.",
+    }
+    return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
 
 
 def code_metrics(turns: list[dict]) -> dict:
@@ -122,21 +155,63 @@ def _looks_spanish(text: str) -> bool:
     return len(_SPANISH.findall(text)) >= 3
 
 
-def weighted_score(scores: dict, rubric: dict) -> float:
+def weighted_score(scores: dict, rubric: dict) -> float | None:
+    """The weighted 1 to 5 score. A rubric with only checks has no score: None, not 0."""
+    if "dimensions" not in rubric:
+        return None
     dims = rubric["dimensions"]
     total_w = sum(d["weight"] for d in dims.values())
     return round(sum(scores[k] * d["weight"] for k, d in dims.items()) / total_w, 2)
 
 
-def passed(debrief: dict, judge: dict, score: float, rubric: dict) -> bool:
-    c = rubric["pass_criteria"]
-    checks = [
-        not c.get("hidden_concern_surfaced") or debrief["hidden_concern_surfaced"],
-        not c.get("hidden_concern_addressed") or debrief["hidden_concern_addressed"],
-        not c.get("no_overpromise") or not judge["overpromise"],
-        score >= c.get("min_weighted_score", 0),
-    ]
-    return all(checks)
+_CRITERION_WORDS = {
+    "hidden_concern_surfaced": "the buyer's hidden concern came out",
+    "hidden_concern_addressed": "the seller handled it",
+    "no_overpromise": "the seller made no major unsupported claims",
+}
+
+
+def describe_pass(rubric: dict) -> str:
+    """The pass rule in words, for reports. Built from pass_criteria so it can't drift from passed()."""
+    parts = []
+    for key, required in rubric["pass_criteria"].items():
+        if key == loaders.THRESHOLD:
+            parts.append(f"the weighted rubric score is at least {required}")
+        elif required:
+            if key in _CRITERION_WORDS:
+                parts.append(_CRITERION_WORDS[key])
+            else:
+                name = loaders.check_label(key, rubric["checks"][key])
+                parts.append(f'the judge\'s check "{name}" passes')
+    return _join(parts)
+
+
+def _join(parts: list[str]) -> str:
+    if len(parts) <= 2:
+        return " and ".join(parts)
+    return ", ".join(parts[:-1]) + ", and " + parts[-1]
+
+
+def _criterion(key: str, debrief: dict, judge: dict) -> bool:
+    """The verdict for one pass criterion: the debrief, the judge's overpromise flag, or one of its checks."""
+    if key in ("hidden_concern_surfaced", "hidden_concern_addressed"):
+        return debrief[key]
+    if key == "no_overpromise":
+        return not judge["overpromise"]
+    if key in judge.get("checks", {}):
+        return judge["checks"][key]["passed"]
+    raise SystemExit(f"Pass criterion {key!r} is not built in, and the judge gave no verdict for it.")
+
+
+def passed(debrief: dict, judge: dict, score: float | None, rubric: dict) -> bool:
+    """Every criterion marked true must hold, and the weighted score must reach the threshold."""
+    for key, required in rubric["pass_criteria"].items():
+        if key == loaders.THRESHOLD:
+            if score < required:
+                return False
+        elif required and not _criterion(key, debrief, judge):
+            return False
+    return True
 
 
 def grade_call(
@@ -175,7 +250,8 @@ def grade_call(
             fact_sheet=loaders.fact_sheet(track=track),
             persona_hidden=hidden,
             gitlab_goal=loaders.gitlab_goal(persona),
-            rubric=loaders.as_yaml(rubric["dimensions"]),
+            rubric=loaders.as_yaml(rubric.get("dimensions", {})),
+            checks=loaders.as_yaml(rubric.get("checks", {})),
             transcript=transcript,
         ),
         schema=judge_schema(rubric),
@@ -185,7 +261,7 @@ def grade_call(
     # honesty score.
     judge["overpromise"] = any(c.get("severity") == "major" for c in judge.get("unsupported_claims", []))
 
-    score = weighted_score(judge["scores"], rubric)
+    score = weighted_score(judge.get("scores", {}), rubric)
     return {
         "metrics": code_metrics(call["turns"]),
         "debrief": debrief,

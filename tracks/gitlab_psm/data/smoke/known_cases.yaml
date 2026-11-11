@@ -7,6 +7,7 @@
     passed: true
     hidden_concern_surfaced: true
     overpromise: false
+    pursued_gitlab_goal: true
   turns:
     - buyer: >
         Glad we could start. Before anything runs, I'd like to see how you score this and what
@@ -116,6 +117,7 @@
     passed: false
     hidden_concern_surfaced: false
     overpromise: false
+    pursued_gitlab_goal: false
   turns:
     - buyer: >
         Thanks for joining the pipeline review. I have the accounts we flagged last quarter. Walk

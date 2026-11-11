@@ -8,6 +8,7 @@ you're not anchored) and records your scores. `scio calibrate` compares.
 from __future__ import annotations
 
 import csv
+import json
 import math
 import random
 import textwrap
@@ -29,8 +30,18 @@ def read_labels(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
+def _require_dimensions(rubric: dict, track: str) -> None:
+    """Labels and calibration compare 1 to 5 scores. A track graded only by checks has none to compare."""
+    if "dimensions" not in rubric:
+        raise SystemExit(
+            f"Track {track!r} grades with yes/no checks and has no 1 to 5 scores, so `scio label` and "
+            "`scio calibrate` have nothing to compare. Label calls pass or fail with `scio annotate` instead."
+        )
+
+
 def label(run_dir: Path, labels_path: Path, n: int, labeler: str, seed: int = 7, *, track: str) -> None:
     rubric = loaders.load_rubric(track=track)
+    _require_dimensions(rubric, track)
     dims = rubric["dimensions"]
     existing = read_labels(labels_path)
     done = {r["call_id"] for r in existing if r["labeler"] == labeler}
@@ -106,6 +117,9 @@ def quadratic_kappa(a: list[int], b: list[int], k: int = 5) -> float | None:
 def calibrate(run_dir: Path, labels_path: Path, judge: str = "opus") -> str:
     if judge not in ("opus", "jev"):
         raise ValueError(f"Unknown judge {judge!r}. Use 'opus' or 'jev'.")
+    meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    track = loaders.track_of(meta["config"])
+    _require_dimensions(loaders.load_rubric(track=track), track)
     labels = read_labels(labels_path)
     calls = {c["id"]: c for c in load_calls(run_dir) if "grade" in c and (judge == "opus" or "jev" in c)}
     labels = [r for r in labels if r["call_id"] in calls]

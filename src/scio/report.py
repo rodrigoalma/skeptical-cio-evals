@@ -6,10 +6,11 @@ import csv
 import json
 import math
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from statistics import mean
 
-from . import dashboard, jev, loaders
+from . import dashboard, grade, jev, loaders
 from .llm import cost_of, cost_totals
 from .runner import load_calls
 
@@ -28,8 +29,10 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (max(0.0, centre - half), min(1.0, centre + half))
 
 
-def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
+def flatten(call: dict, pricing: dict, rubric: dict) -> dict:
     g = call["grade"]
+    judge = g["judge"]
+    checks = judge.get("checks", {})
     seller_usage = call["usage"]["seller"]
     row = {
         "id": call["id"],
@@ -40,15 +43,18 @@ def flatten(call: dict, pricing: dict, dims: list[str]) -> dict:
         # Calls from before effort was recorded can't say what the model defaulted to.
         "seller_effort": call.get("seller_effort") or "unrecorded",
         "passed": g["passed"],
+        # Empty on a track graded only by checks.
         "weighted_score": g["weighted_score"],
-        **{f"score_{d}": g["judge"]["scores"][d] for d in dims},
+        **{f"score_{d}": judge["scores"][d] for d in rubric.get("dimensions", {})},
         "concern_surfaced": g["debrief"]["hidden_concern_surfaced"],
         "concern_addressed": g["debrief"]["hidden_concern_addressed"],
         "dealbreaker_hit": g["debrief"]["dealbreaker_hit"],
         "next_meeting": g["debrief"]["would_take_next_meeting"],
         "buyer_trust": g["debrief"]["trust"],
-        "overpromise": g["judge"]["overpromise"],
-        "unsupported_claims": len(g["judge"]["unsupported_claims"]),
+        "overpromise": judge["overpromise"],
+        "unsupported_claims": len(judge["unsupported_claims"]),
+        **{f"check_{cid}": verdict["passed"] for cid, verdict in checks.items()},
+        **{f"evidence_{cid}": verdict["evidence"] for cid, verdict in checks.items()},
         "ended_by": call["ended_by"],
         "status": call.get("status", "ok"),
         **g["metrics"],
@@ -68,21 +74,34 @@ def _avg(xs, fmt="{:.2f}") -> str:
     return fmt.format(mean(xs)) if xs else "-"
 
 
+def _check_rate(group: list[dict], check_id: str) -> str:
+    """Share of calls where the check passed. Calls graded before the check existed are left out."""
+    key = f"check_{check_id}"
+    seen = [r[key] for r in group if key in r]
+    return _pct(seen) if seen else "n/a"
+
+
+def _check_column(check_id: str, label: str) -> tuple[str, Callable[[list[dict]], str]]:
+    return label, lambda g: _check_rate(g, check_id)
+
+
 def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     cfg = cfg or meta["config"]
     pricing, cache_write_multipliers = loaders.current_costs()
     rubric = loaders.load_rubric(track=track)
-    dims = list(rubric["dimensions"])
+    dims = list(rubric.get("dimensions", {}))
+    checks = rubric.get("checks", {})
 
     calls = [c for c in load_calls(run_dir) if "grade" in c]
     if not calls:
         raise SystemExit("No graded calls found. Run `scio grade` first.")
-    rows = [flatten(c, pricing, dims) for c in calls]
+    rows = [flatten(c, pricing, rubric) for c in calls]
 
     # results.csv: one row per call, for your own analysis in a spreadsheet
+    fields = list(dict.fromkeys(k for r in rows for k in r))
     with open(run_dir / "results.csv", "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
 
@@ -116,43 +135,84 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
         f"Buyer played by `{buyer}` at {effort.get('buyer') or 'default'} effort, "
         f"judged by `{judge}` at {effort.get('judge') or 'default'} effort.",
         "",
-        f"Excluded from scores: {n_truncated} truncated calls. Failed attempts logged in errors.jsonl: {n_errors}.",
+        f"Excluded from {'scores' if dims else 'pass rates'}: {n_truncated} truncated calls. "
+        f"Failed attempts logged in errors.jsonl: {n_errors}.",
         "",
         "## Headline",
         "",
-        "A call **passes** when the buyer's hidden concern came out, the seller handled it, the seller made "
-        f"no major unsupported claims, and the weighted rubric score is at least "
-        f"{rubric['pass_criteria']['min_weighted_score']}.",
+        f"A call **passes** when {grade.describe_pass(rubric)}.",
         "",
-        "| Seller model | Prompt | Effort | Calls | Pass rate (95% CI) | Score | Concern surfaced | Concern handled "
-        "| Overpromise | Next meeting | Talk ratio | Cost / call | Sec / turn |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    if not dims:
+        lines += [
+            "This track grades with yes/no checks and has no 1 to 5 scores. A check passes only when its "
+            "pass_when holds and its fail_when does not.",
+            "",
+        ]
+    stale = sum(1 for r in rows if any(f"check_{c}" not in r for c in checks))
+    if stale:
+        lines += [
+            f"> **{stale} call(s) were graded before this rubric had these checks.** Their pass results are from the "
+            "older rubric, and their check columns show n/a. Run `scio grade --force` on this run to apply the checks.",
+            "",
+        ]
+
+    score_cols: list[tuple[str, Callable[[list[dict]], str]]] = (
+        [("Score", lambda g: _avg(r["weighted_score"] for r in g))] if dims else []
+    )
+    outcome_cols: list[tuple[str, Callable[[list[dict]], str]]] = [
+        ("Concern surfaced", lambda g: _pct(r["concern_surfaced"] for r in g)),
+        ("Concern handled", lambda g: _pct(r["concern_addressed"] for r in g)),
+        ("Overpromise", lambda g: _pct(r["overpromise"] for r in g)),
+        *(_check_column(c, loaders.check_label(c, spec)) for c, spec in checks.items()),
+    ]
+    tail_cols = [
+        ("Next meeting", lambda g: _pct(r["next_meeting"] for r in g)),
+        ("Talk ratio", lambda g: _avg(r["talk_ratio"] for r in g)),
+        ("Cost / call", lambda g: f"${_avg((r['seller_cost_usd'] for r in g), '{:.4f}')}"),
+        ("Sec / turn", lambda g: _avg((r["seller_sec_per_turn"] for r in g), "{:.1f}")),
+    ]
+    columns = [*score_cols, *outcome_cols, *tail_cols]
+    lines += [
+        "| Seller model | Prompt | Effort | Calls | Pass rate (95% CI) | " + " | ".join(h for h, _ in columns) + " |",
+        "|---|---|---|---|---|" + "---|" * len(columns),
     ]
     for key in configs:
         g = groups[key]
         k = sum(r["passed"] for r in g)
         lo, hi = wilson(k, len(g))
-        lines.append(
-            f"| {key[0]} | {key[1]} | {key[2]} | {len(g)} | {100 * k / len(g):.0f}% ({100 * lo:.0f}-{100 * hi:.0f}) "
-            f"| {_avg(r['weighted_score'] for r in g)} | {_pct(r['concern_surfaced'] for r in g)} "
-            f"| {_pct(r['concern_addressed'] for r in g)} | {_pct(r['overpromise'] for r in g)} "
-            f"| {_pct(r['next_meeting'] for r in g)} | {_avg(r['talk_ratio'] for r in g)} "
-            f"| ${_avg((r['seller_cost_usd'] for r in g), '{:.4f}')} "
-            f"| {_avg((r['seller_sec_per_turn'] for r in g), '{:.1f}')} |"
-        )
+        cells = " | ".join(fn(g) for _, fn in columns)
+        rate = f"{100 * k / len(g):.0f}% ({100 * lo:.0f}-{100 * hi:.0f})"
+        lines.append(f"| {key[0]} | {key[1]} | {key[2]} | {len(g)} | {rate} | {cells} |")
 
-    lines += [
-        "",
-        "## Rubric scores (judge, 1 to 5)",
-        "",
-        "| Seller model | Prompt | Effort | " + " | ".join(dims) + " |",
-        "|---|---|---|" + "---|" * len(dims),
-    ]
-    for key in configs:
-        g = groups[key]
-        lines.append(
-            f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims) + " |"
-        )
+    if dims:
+        lines += [
+            "",
+            "## Rubric scores (judge, 1 to 5)",
+            "",
+            "| Seller model | Prompt | Effort | " + " | ".join(dims) + " |",
+            "|---|---|---|" + "---|" * len(dims),
+        ]
+        for key in configs:
+            g = groups[key]
+            scores = " | ".join(_avg(r[f"score_{d}"] for r in g) for d in dims)
+            lines.append(f"| {key[0]} | {key[1]} | {key[2]} | {scores} |")
+
+    if checks:
+        check_headers = [loaders.check_label(c, spec) for c, spec in checks.items()]
+        lines += [
+            "",
+            "## Checks",
+            "",
+            "Share of calls where each check passed, by seller setup. The viewer shows the judge's evidence for "
+            "each call.",
+            "",
+            "| Seller model | Prompt | Effort | " + " | ".join(check_headers) + " |",
+            "|---|---|---|" + "---|" * len(checks),
+        ]
+        for key in configs:
+            g = groups[key]
+            lines.append(f"| {key[0]} | {key[1]} | {key[2]} | " + " | ".join(_check_rate(g, c) for c in checks) + " |")
 
     jev_summary = jev.comparison(calls, dims)
     if jev_summary:
@@ -226,7 +286,7 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
     cal = run_dir / "calibration.md"
     if cal.exists():
         lines += ["", cal.read_text(encoding="utf-8")]
-    else:
+    elif dims:
         lines += [
             "## Judge calibration",
             "",
@@ -234,19 +294,31 @@ def build(run_dir: Path, *, track: str, cfg: dict | None = None) -> Path:
             "to see how often the judge agrees with you.",
             "",
         ]
+    else:
+        lines += [
+            "## Judge calibration",
+            "",
+            "Not applicable. This track grades with yes/no checks, so there are no scores to calibrate. "
+            "Label calls pass or fail with `scio annotate`.",
+            "",
+        ]
 
     (run_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
-    _write_viewer(run_dir, calls, rows, dims, meta)
+    _write_viewer(run_dir, calls, rows, rubric, meta)
     dashboard.write(run_dir / "dashboard.html", [run_dir], pricing, f"Run {run_dir.name}")
     return run_dir / "report.md"
 
 
-def _write_viewer(run_dir: Path, calls: list[dict], rows: list[dict], dims: list[str], meta: dict) -> None:
+def _write_viewer(run_dir: Path, calls: list[dict], rows: list[dict], rubric: dict, meta: dict) -> None:
     by_id = {r["id"]: r for r in rows}
     payload = {
         "run": run_dir.name,
         "mock": meta.get("mock", False),
-        "dims": dims,
+        "dims": list(rubric.get("dimensions", {})),
+        "checks": [
+            {"id": cid, "label": loaders.check_label(cid, spec), "question": spec["question"]}
+            for cid, spec in rubric.get("checks", {}).items()
+        ],
         "efforts": loaders.EFFORTS,
         "calls": [
             {

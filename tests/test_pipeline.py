@@ -53,6 +53,8 @@ def test_seller_never_sees_hidden_brief():
 def test_rubric_weights_sum_to_one():
     for track in loaders.available_tracks():
         rubric = loaders.load_rubric(track=track)
+        if "dimensions" not in rubric:  # a checks-only track has no weights
+            continue
         assert abs(sum(d["weight"] for d in rubric["dimensions"].values()) - 1.0) < 1e-9
         for d in rubric["dimensions"].values():
             assert set(d["anchors"]) == {1, 2, 3, 4, 5}

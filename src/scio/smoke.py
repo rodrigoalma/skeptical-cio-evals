@@ -28,11 +28,22 @@ def run(llm: LLM, cfg: dict, *, track: str, log=print) -> bool:
     buyer_model = cfg["models"][cfg["roles"]["buyer"]]
     judge_model = cfg["models"][cfg["roles"]["judge"]]
     judge_effort = cfg["effort"]["judge"]
+    cases = load_cases(track=track)
+
+    # Every key an expect block may name. Checked before any grader call, so a typo costs nothing.
+    known = {"passed", "hidden_concern_surfaced", "overpromise", *rubric.get("checks", {})}
+    for case in cases:
+        unknown = sorted(set(case["expect"]) - known)
+        if unknown:
+            raise SystemExit(
+                f"{case['id']}: expect names {', '.join(unknown)}, which this track's grader does not report. "
+                f"Known: {', '.join(sorted(known))}."
+            )
 
     all_ok = True
     errors = 0
-    log(f"Grading {len(load_cases(track=track))} known cases with judge {judge_model} at {judge_effort} effort...\n")
-    for case in load_cases(track=track):
+    log(f"Grading {len(cases)} known cases with judge {judge_model} at {judge_effort} effort...\n")
+    for case in cases:
         try:
             g = grade_call(
                 case, personas[case["persona"]], llm, buyer_model, judge_model, rubric, judge_effort, track=track
@@ -46,14 +57,13 @@ def run(llm: LLM, cfg: dict, *, track: str, log=print) -> bool:
             "passed": g["passed"],
             "hidden_concern_surfaced": g["debrief"]["hidden_concern_surfaced"],
             "overpromise": g["judge"]["overpromise"],
+            **{check_id: verdict["passed"] for check_id, verdict in g["judge"].get("checks", {}).items()},
         }
         misses = {k: (v, got[k]) for k, v in case["expect"].items() if got[k] != v}
         status = "ok  " if not misses else "MISS"
         all_ok &= not misses
-        log(
-            f"[{status}] {case['id']:18} score {g['weighted_score']:.2f}  "
-            + "  ".join(f"{k}={got[k]}" for k in case["expect"])
-        )
+        score = "" if g["weighted_score"] is None else f"score {g['weighted_score']:.2f}  "
+        log(f"[{status}] {case['id']:18} {score}" + "  ".join(f"{k}={got[k]}" for k in case["expect"]))
         for k, (want, have) in misses.items():
             log(f"         expected {k}={want}, got {have}")
     if errors:

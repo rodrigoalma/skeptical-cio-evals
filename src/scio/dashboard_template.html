@@ -150,12 +150,15 @@ td.num { font-family: var(--mono); }
   <section class="frame" data-panel="scorecard">
     <div class="frame-head">
       <div style="display:grid;gap:4px"><h2>Seller setups, ranked</h2>
-        <p>Click a column to sort. Pass rate shows its 95% interval. Rubric cells run discovery → next step, darker is better.</p></div>
+        <p id="b-scorenote"></p></div>
       <div class="legend" id="b-legend"></div>
     </div>
     <div class="tablebox"><table id="b-table"></table></div>
     <div class="split">
-      <div><h3>Rubric by prompt</h3><p class="note">Judge scores 1 to 5, averaged over every model and effort that ran the prompt.</p><div class="tablebox"><table id="b-dims"></table></div></div>
+      <div>
+        <div id="b-dims-box"><h3>Rubric by prompt</h3><p class="note">Judge scores 1 to 5, averaged over every model and effort that ran the prompt.</p><div class="tablebox"><table id="b-dims"></table></div></div>
+        <div id="b-checks-box" hidden><h3>Checks by prompt</h3><p class="note">Share of calls that passed each check, averaged over every model and effort that ran the prompt.</p><div class="tablebox"><table id="b-checks"></table></div></div>
+      </div>
       <div><h3>Major unsupported claims</h3><div class="claims" id="b-claims"></div></div>
     </div>
   </section>
@@ -233,7 +236,14 @@ function setups(rows) {
     if (!s.n) continue;
     s.k = g.filter(r => r.pass).length;
     s.pass = s.k / s.n; s.ci = wilson(s.k, s.n);
-    s.score = avg(g.map(r => r.score));
+    // A track graded only by checks has no score. Show n/a for it, never 0.
+    const scored = g.filter(r => r.score !== null).map(r => r.score);
+    s.score = scored.length ? avg(scored) : null;
+    s.addressed = avg(g.map(r => (r.addressed ? 1 : 0)));
+    s.checks = Object.fromEntries(DATA.checks.map(c => {
+      const seen = g.filter(r => c.id in r.checks).map(r => (r.checks[c.id] ? 1 : 0));
+      return [c.id, seen.length ? avg(seen) : null];
+    }));
     s.surfaced = avg(g.map(r => r.surfaced ? 1 : 0));
     s.overpromise = avg(g.map(r => r.overpromise ? 1 : 0));
     s.next = avg(g.map(r => r.next_meeting ? 1 : 0));
@@ -244,7 +254,7 @@ function setups(rows) {
     s.label = `${s.model}·${s.prompt}·${EFFSHORT[s.effort] || s.effort}`;
     out.push(s);
   }
-  return out.sort((a, b) => b.pass - a.pass || b.score - a.score);
+  return out.sort((a, b) => b.pass - a.pass || (b.score ?? 0) - (a.score ?? 0));
 }
 const cfgCell = s => `<span class="cfg"><i class="sw" style="background:${col(s.model)}"></i>${esc(s.model)} <span class="tag">${esc(s.prompt)}</span><span class="tag">${esc(EFFSHORT[s.effort] || s.effort)}</span></span>`;
 const legend = list => [...new Set(list.map(s => s.model))].sort((a, b) => MODELS.indexOf(a) - MODELS.indexOf(b))
@@ -290,18 +300,41 @@ const COLS = [
   ["score", "Score", s => s.score, 1], ["surfaced", "Concern found", s => s.surfaced, 1], ["overpromise", "Overpromise", s => s.overpromise, 1],
   ["next", "Next meeting", s => s.next, 1], ["cost", "Cost / call", s => s.cost, 1], ["cpp", "Cost / pass", s => s.cpp, 1],
   ["sec", "Sec / turn", s => s.sec, 1], ["dims", "Rubric", null]];
+const rateCell = v => (v === null || v === undefined ? "n/a" : pct(v));
+// Check columns sit after Overpromise and only appear when a pooled run has checks.
+// The Rubric column only appears when a pooled run has dimensions.
+function allCols() {
+  const extra = DATA.checks.length
+    ? [["addressed", "Concern handled", s => s.addressed, 1], ...DATA.checks.map(c => [`chk:${c.id}`, c.label, s => s.checks[c.id], 1])]
+    : [];
+  const at = COLS.findIndex(c => c[0] === "next");
+  const cols = [...COLS.slice(0, at), ...extra, ...COLS.slice(at)];
+  return DATA.dims.length ? cols : cols.filter(c => c[0] !== "dims");
+}
 const shade = v => v >= 4 ? "var(--seq-3)" : v >= 3.4 ? "var(--seq-2)" : v >= 2.8 ? "var(--seq-1)" : "var(--seq-0)";
 function renderScorecard(list, rows) {
   document.getElementById("b-legend").innerHTML = legend(list);
-  const c0 = COLS.find(c => c[0] === state.sort.key);
-  const sorted = [...list].sort((a, b) => { const va = c0[2](a), vb = c0[2](b); return (va > vb ? 1 : va < vb ? -1 : 0) * (state.sort.dir === "asc" ? 1 : -1); });
-  const head = COLS.map(([k, l, f, num]) => `<th class="${num ? "num" : ""}">${f ? `<button data-k="${k}" ${state.sort.key === k ? `data-dir="${state.sort.dir}"` : ""}>${l}</button>` : l}</th>`).join("");
+  const cols = allCols();
+  const c0 = cols.find(c => c[0] === state.sort.key) || cols[0];
+  const sorted = [...list].sort((a, b) => { const va = c0[2](a) ?? -1, vb = c0[2](b) ?? -1; return (va > vb ? 1 : va < vb ? -1 : 0) * (state.sort.dir === "asc" ? 1 : -1); });
+  document.getElementById("b-scorenote").textContent = DATA.dims.length
+    ? "Click a column to sort. Pass rate shows its 95% interval. Rubric cells run discovery → next step, darker is better."
+    : "Click a column to sort. Pass rate shows its 95% interval. Check columns show the share of calls that passed each check.";
+  const head = cols.map(([k, l, f, num]) => `<th class="${num ? "num" : ""}">${f ? `<button data-k="${k}" ${state.sort.key === k ? `data-dir="${state.sort.dir}"` : ""}>${l}</button>` : l}</th>`).join("");
   const body = sorted.map(s => {
     const ci = `<span class="ci"><span class="track"></span><span class="range" style="left:${s.ci[0] * 100}%;width:${(s.ci[1] - s.ci[0]) * 100}%;background:${col(s.model)}"></span><span class="pt" style="left:${s.pass * 100}%;background:${col(s.model)}"></span></span> <span class="mono">${pct(s.pass)}</span>`;
     const over = s.overpromise === 0 ? `<span class="pill good">✓ none</span>` : s.overpromise >= .1 ? `<span class="pill bad">✕ ${pct(s.overpromise)}</span>` : `<span class="pill warn">! ${pct(s.overpromise)}</span>`;
     const dims = `<span class="dims">${DATA.dims.map(d => `<i title="${esc(DIMLAB[d] || d)}: ${s.dims[d].toFixed(1)}" style="background:${shade(s.dims[d])}"></i>`).join("")}</span>`;
     const trunc = s.truncated ? ` <span class="note" title="Truncated calls are left out of the scores">+${s.truncated} cut off</span>` : "";
-    return `<tr><td>${cfgCell(s)}</td><td class="num">${s.n}${trunc}</td><td>${ci}</td><td class="num">${s.score.toFixed(2)}</td><td class="num">${pct(s.surfaced)}</td><td class="num">${over}</td><td class="num">${pct(s.next)}</td><td class="num">${usd(s.cost)}</td><td class="num">${s.k ? usd(s.cpp) : "no passes"}</td><td class="num">${s.sec.toFixed(1)}s</td><td>${dims}</td></tr>`;
+    const cells = {
+      label: `<td>${cfgCell(s)}</td>`, n: `<td class="num">${s.n}${trunc}</td>`, pass: `<td>${ci}</td>`,
+      score: `<td class="num">${s.score === null ? "n/a" : s.score.toFixed(2)}</td>`,
+      surfaced: `<td class="num">${pct(s.surfaced)}</td>`, overpromise: `<td class="num">${over}</td>`,
+      addressed: `<td class="num">${rateCell(s.addressed)}</td>`, next: `<td class="num">${pct(s.next)}</td>`,
+      cost: `<td class="num">${usd(s.cost)}</td>`, cpp: `<td class="num">${s.k ? usd(s.cpp) : "no passes"}</td>`,
+      sec: `<td class="num">${s.sec.toFixed(1)}s</td>`, dims: `<td>${dims}</td>`,
+    };
+    return `<tr>${cols.map(([k]) => cells[k] ?? `<td class="num">${rateCell(s.checks[k.slice(4)])}</td>`).join("")}</tr>`;
   }).join("");
   const t = document.getElementById("b-table");
   t.innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
@@ -310,6 +343,12 @@ function renderScorecard(list, rows) {
 
   const ok = rows.filter(r => r.ok);
   const prompts = [...new Set(ok.map(r => r.prompt))].sort();
+  document.getElementById("b-dims-box").hidden = !DATA.dims.length;
+  document.getElementById("b-checks-box").hidden = !DATA.checks.length;
+  document.getElementById("b-checks").innerHTML = `<thead><tr><th>Prompt</th>${DATA.checks.map(c => `<th class="num">${esc(c.label)}</th>`).join("")}<th class="num">Pass</th></tr></thead><tbody>` +
+    prompts.map(p => { const g = ok.filter(r => r.prompt === p);
+      return `<tr><td><span class="tag">${esc(p)}</span></td>${DATA.checks.map(c => { const seen = g.filter(r => c.id in r.checks).map(r => (r.checks[c.id] ? 1 : 0));
+        return `<td class="num">${rateCell(seen.length ? avg(seen) : null)}</td>`; }).join("")}<td class="num">${pct(avg(g.map(r => r.pass ? 1 : 0)))}</td></tr>`; }).join("") + `</tbody>`;
   document.getElementById("b-dims").innerHTML = `<thead><tr><th>Prompt</th>${DATA.dims.map(d => `<th class="num">${esc(DIMLAB[d] || d)}</th>`).join("")}<th class="num">Pass</th></tr></thead><tbody>` +
     prompts.map(p => { const g = ok.filter(r => r.prompt === p);
       return `<tr><td><span class="tag">${esc(p)}</span></td>${DATA.dims.map(d => { const v = avg(g.filter(r => d in r.scores).map(r => r.scores[d]));
@@ -372,8 +411,12 @@ function renderH2H(list) {
       (overlap ? ` The 95% intervals overlap, so <strong>add trials before deciding</strong>.` : ` The intervals don't overlap, so the gap is likely real.`) +
       ` Based on ${A.n} and ${B.n} calls.`;
   }
-  const rowsD = [["Pass rate", 1 + A.pass * 4, 1 + B.pass * 4, true], ["Weighted score", A.score, B.score]]
-    .concat(DATA.dims.map(d => [DIMLAB[d] || d, A.dims[d], B.dims[d]]));
+  const scored = A.score !== null && B.score !== null;
+  const rowsD = [["Pass rate", 1 + A.pass * 4, 1 + B.pass * 4, true]]
+    .concat(scored ? [["Weighted score", A.score, B.score]] : [])
+    .concat(scored ? DATA.dims.map(d => [DIMLAB[d] || d, A.dims[d], B.dims[d]]) : [])
+    .concat(DATA.checks.filter(c => A.checks[c.id] !== null && B.checks[c.id] !== null)
+      .map(c => [c.label, 1 + A.checks[c.id] * 4, 1 + B.checks[c.id] * 4, true]));
   const W = 460, rh = 32, H = rowsD.length * rh + 28, m = { l: 118, r: 50 };
   const xs = v => m.l + (v - 1) / 4 * (W - m.l - m.r);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Quality comparison">`;

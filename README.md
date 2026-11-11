@@ -30,7 +30,7 @@ flowchart LR
     P -- public brief only --> S
     S <-- multi-turn call --> B
     B --> D[Buyer debrief<br/>was my concern found and handled?]
-    S & B --> J[Judge model<br/>rubric scores + unsupported claims]
+    S & B --> J[Judge model<br/>rubric scores or checks + unsupported claims]
     D & J --> R[Report + transcript viewer]
 ```
 
@@ -48,11 +48,13 @@ from the same place.
 |---|---|---|
 | Code metrics | Python | Talk ratio, number of questions, how soon the first question came |
 | Buyer debrief | The buyer model, still holding its secret | Did my hidden concern come out? Was it handled? Would I take another meeting? |
-| Judge | A separate model with the rubric | Scores on six dimensions, plus every claim the seller made that the fact sheet doesn't support |
+| Judge | A separate model with the rubric | Scores on the track's dimensions, or yes/no checks with quoted evidence, plus every claim the seller made that the fact sheet doesn't support |
 
 A call **passes** only if the hidden concern was found and handled, the seller
 made no major unsupported claims, and the weighted rubric score is at least
-3.5. You can change all of that in `rubric.yaml`.
+3.5. You can change all of that in `rubric.yaml`. The sales and sa tracks still
+grade with 1 to 5 dimensions and a weighted score. The GitLab PSM track grades
+with binary checks and has no scores; see its section below.
 
 The debrief matters because only the buyer knows the secret. The judge is good
 at scoring how the call went, but the buyer is the one who can say "they
@@ -118,6 +120,20 @@ such as `ai_lab_partnerships_lead` selects all of that partner's scenarios.
 | Cursor (`ai_native_company`) | `grok_and_inference` | Scattered | Daniel has three asks from SpaceXAI leadership at once: Grok in Duo, Grok Bot on merge requests, and inference. | Narrow the call to one item with a named decision owner, and get Grok pricing and data terms in writing. |
 | Semgrep (`devsecops_vendor_alliances`) | `overlap_conflict` | Direct and adversarial | Customers drop Semgrep's platform because they think GitLab already has Semgrep. | Agree a joint positioning statement for shared customers. |
 
+### Grading with checks
+
+This track grades with binary checks, not 1 to 5 scores. Each check is a yes or no
+question in `tracks/gitlab_psm/rubric.yaml`, with a `pass_when` and a `fail_when`
+condition. The judge answers every check and quotes the seller's words as evidence.
+A call passes only if the buyer's hidden concern came out and was handled, the judge
+found no major unsupported claims, and every check named in `pass_criteria` holds.
+The current check, `pursued_gitlab_goal`, asks whether the seller pursued GitLab's goal
+for the meeting as a give and get. The checks come from error analysis, so there are
+few for now; more will be added after your labels.
+
+Because there are no scores, `scio label` and `scio calibrate` refuse on this track,
+and so does `scio jev`. Label calls pass or fail with `scio annotate` instead.
+
 ## Quick start
 
 ```bash
@@ -152,9 +168,9 @@ prompt.
 
 Each run writes to `results/<timestamp>/`:
 
-- `report.md` with the headline table, rubric scores, pass rate by persona,
+- `report.md` with the headline table, rubric scores or checks, pass rate by persona,
   the worst unsupported claims, and what the run cost
-- `viewer.html`, a page for reading transcripts side by side with the scores
+- `viewer.html`, a page for reading transcripts side by side with the scores or check verdicts
 - `dashboard.html`, the dashboard (see below) for just this run
 - `results.csv` with one row per call for your own analysis
 - `calls/*.json` with every transcript, debrief and grade
@@ -195,7 +211,7 @@ scio dashboard            # writes results/dashboard.html from every run
 One page across all your runs, with three views:
 
 - **Scorecard**: every seller setup (model, prompt, effort) with its pass rate
-  and 95% interval, rubric scores, how often it found the hidden concern,
+  and 95% interval, rubric scores or check results, how often it found the hidden concern,
   overpromises, cost per call, cost per passing call and seconds per turn.
   Click a column to sort.
 - **Persona matrix**: passes (or concerns found) per persona and setup, so you

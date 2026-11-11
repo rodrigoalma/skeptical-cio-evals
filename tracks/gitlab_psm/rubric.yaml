@@ -1,72 +1,23 @@
-# Starter rubric for the GitLab PSM track. Each dimension is scored 1 to 5.
-# To be replaced with binary checks after error analysis: once real calls show
-# where the judge and a human disagree, turn these anchors into yes/no questions.
-# The judge prompt and labeling tool both read this file.
+# Grading rubric for the GitLab PSM track. The judge answers each check yes or no,
+# with the seller's words as evidence. This track has no 1 to 5 scores.
+# The checks come from error analysis. More will be added after your labels
+# (see `scio annotate`). The judge prompt reads the checks from this file, and
+# grade.py decides pass or fail from pass_criteria.
 
-dimensions:
-  partner_discovery:
-    weight: 0.25
-    question: Did the seller learn the partner's goals, how they are measured and the real concern before proposing anything?
-    anchors:
-      1: Pitched GitLab without asking about the partner's goals or how they are measured.
-      2: Asked a few generic questions about the partnership but never learned how success is measured.
-      3: Learned the partner's goals but left how they are measured, or the real concern, unclear.
-      4: Asked focused questions about goals, measures and what is driving the call, then used the answers.
-      5: Uncovered the partner's real concern through thoughtful follow-ups and shaped the proposal around it.
+checks:
+  pursued_gitlab_goal:
+    label: Pursued GitLab's goal
+    question: Did the seller actively pursue GitLab's goal for this meeting as a give and get?
+    pass_when: >
+      The seller asked for GitLab's goal, or a clear part of it, explicitly. They tied it to what the
+      partner wanted, and either got a commitment, a counter, or a dated path to a decision.
+    fail_when: >
+      The seller never raised GitLab's goal, only gave the partner what it asked for, or mentioned
+      the goal vaguely without asking for anything.
 
-  technical_accuracy:
-    weight: 0.15
-    question: Was the seller correct and specific about GitLab capabilities and integration paths, within the fact sheet?
-    anchors:
-      1: Made a major false technical claim about GitLab capabilities or integration paths.
-      2: Named capabilities vaguely, or confused what GitLab, the partner and the customer each do.
-      3: Mostly accurate, but blurred where a capability runs, which tier or deployment it needs, or what is not confirmed.
-      4: Specific and accurate about the capability, the integration path and where it runs, and clear about the partner's part.
-      5: Precise about the integration path and its limits, and separated documented facts from items still to confirm.
-
-  honesty:
-    weight: 0.20
-    question: Did the seller stay within the fact sheet and the PSM's authority, and say what needs confirming?
-    anchors:
-      1: Made major promises the fact sheet forbids, such as default model placement, roadmap dates, marketplace drawdown or exclusivity.
-      2: Made unsupported claims, or spoke for product, R&D or alliances leadership as if they had already decided.
-      3: Mostly stayed within bounds, but left an unsupported claim unqualified or blurred who decides.
-      4: Stayed within the fact sheet and the PSM's authority, and said clearly what would be confirmed.
-      5: Separated verified facts from open items, named who would confirm each one, and never blurred authority.
-
-  joint_value:
-    weight: 0.15
-    question: Did the seller connect the work to measurable value for both GitLab and the partner?
-    anchors:
-      1: No value discussed, or value described only as a benefit to GitLab.
-      2: Generic claims of mutual benefit with nothing the partner could measure.
-      3: Named some value for both sides, but left the measure, the owner or the way it is tracked vague.
-      4: Tied the work to a measure both companies can track, such as consumption, revenue or customer outcomes, with a sensible owner.
-      5: Agreed a joint measure, how it will be calculated and who sees it, and checked it with the partner.
-
-  objection_handling:
-    weight: 0.15
-    question: When the partner raised pushback, did the seller respond with care and substance?
-    anchors:
-      1: Ignored, dismissed or argued with the concern, or ignored a conflict of interest.
-      2: Gave a canned answer that did not address the concern.
-      3: Addressed the concern in general terms but left the key question unanswered.
-      4: Acknowledged the concern, clarified its scope and answered with what GitLab knows and what it will check.
-      5: Turned the pushback into a concrete commitment or requirement the partner could verify, and left them more confident.
-
-  next_step:
-    weight: 0.10
-    question: Did the seller close on a concrete mutual next step with owners and dates?
-    anchors:
-      1: No next step, or one that commits GitLab to something it does not control.
-      2: A vague offer to follow up, with no owner or date.
-      3: A next step with an owner on one side only, or with no date.
-      4: A concrete step with an owner on each side and a date, agreed by the partner.
-      5: Agreed owners and dates, and the decision the step feeds into, with the partner confirming.
-
-# A call "passes" only if every condition below holds.
+# A call "passes" only if every criterion marked true holds.
 pass_criteria:
   hidden_concern_surfaced: true      # from the buyer's debrief
   hidden_concern_addressed: true     # from the buyer's debrief
   no_overpromise: true               # from the judge
-  min_weighted_score: 3.5
+  pursued_gitlab_goal: true          # from the judge's checks
