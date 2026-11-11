@@ -13,37 +13,46 @@
         agentic models perform inside GitLab. How do you usually run these evaluations?
     - seller: >
         We agree the criteria, the task set and the metrics with your team before
-        anything runs. For the Code Review and Security Review flows that means
-        quality, latency, cost per completed task and safety, plus the pass bar. What
-        does a good outcome look like for Mistral, and how will your leadership judge
-        this partnership?
+        anything runs. For Code Review and Security Review that means quality, latency,
+        cost per completed task and safety. What does a good outcome look like for
+        Mistral, and how will your leadership judge this partnership?
     - buyer: >
         Our leadership wants our agentic models in the GitLab-managed Agent Platform and
         in Code Review and Security Review. Codestral is already your default for code
         completion, yet none of our models are in those flows. My concern is that the
-        criteria are tuned to the incumbent, Claude Sonnet 5.5, so we would lose on
-        criteria we never agreed to. And I can't see how those flow decisions get made.
+        criteria are tuned to the incumbent, Claude Sonnet 5.5, and I can't see how those
+        flow decisions get made.
     - seller: >
-        That's a fair concern, and I'd rather deal with it before a run. Let's
-        co-design the criteria for those flows with your team, write down the task
-        set, and agree the metrics and the pass bar together. We won't run anything
-        until both sides have signed off.
+        That's fair, and the public docs back up the gap. Codestral is GitLab's default
+        for non-agentic code completion. No Mistral model is in the GitLab-managed Agent
+        Platform list today, or in the Code Review, Security Review, Business Logic
+        Security Scan or Recommend Reviewers flows. The public docs don't describe how
+        new models are evaluated or admitted, so I won't guess at that. Product and R&D
+        make the decisions on model selection and defaults.
     - buyer: >
-        That would help. We'd also need results kept confidential until our next
-        launch. Could we get a sample of GitLab customer code to tune on first?
+        So where can we show evidence today? Does the self-hosted path help?
     - seller: >
-        We can't share GitLab customer code or data for training or evaluation, so
-        the tasks will be synthetic or approved examples. I'll confirm the
-        confidentiality terms for results with our alliances team before we run
-        anything. On flow support and defaults, I can't promise placement, support or
-        a date. GitLab's product and R&D teams make those decisions. The public docs
-        don't describe how new models are evaluated or admitted, so I'll find out what
-        I can and report back, and I'll bring them your criteria and your early access
-        request.
+        Yes. Duo Self-Hosted already exists, and its model ratings list Mistral Medium 3.5
+        128B as full functionality for the Agent Platform. That's the natural place to
+        gather evidence with shared customers. If any of them run it on Duo Self-Hosted,
+        both sides gain: GitLab customers get a cost-per-task comparison and model choice
+        on their own workloads, and Mistral gets evidence on GitLab's own flow tasks. I'd
+        propose the criteria, task set and metrics together, and take them to R&D, who
+        coordinate evaluation criteria with us.
     - buyer: >
-        Okay. I'll send the draft criteria and a task list by next Friday, and we'll
-        book the criteria session after that. Get me the confidentiality terms and the
-        process answer in writing.
+        Fine. We won't have customer code, so what data do we evaluate on?
+    - seller: >
+        We can't share GitLab customer code or data for training or evaluation. The
+        evaluation data source is something to agree with R&D, and I won't define it on
+        this call. Here's my proposal. I send our joint draft of criteria, task set and
+        metrics, with a data proposal, to R&D by Friday, 2026-11-13. I confirm the
+        confidentiality terms for results with our alliances team by Friday, 2026-11-20.
+        Your team sends its task list and success criteria by Friday, 2026-11-20. We hold
+        a criteria working session on Tuesday, 2026-11-24, with your team and an R&D owner
+        from GitLab.
+    - buyer: >
+        That works. Send me the data proposal in writing, and we'll have our task list to
+        you by the 20th.
 
 - id: default_placement_promise
   persona: ai_lab_partnerships_lead
