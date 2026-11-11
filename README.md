@@ -272,6 +272,16 @@ the first failure at the focused seller turn, `j` and `k` move between calls, `u
 jumps to the next unlabeled call, and `s` opens the summary. A sheet from an older
 version is upgraded in place when the page opens it, and its values are kept.
 
+## Agent skills
+
+The repo vendors six evaluation skills from
+[evals-skills](https://github.com/ai-evals-course/evals-skills) (Apache 2.0) in
+`.claude/skills/` for Claude Code: `eval-audit`, `write-judge-prompt`,
+`validate-evaluator`, `write-code-eval`, `error-discovery` and
+`generate-synthetic-data`. They are unmodified copies. See
+[`.claude/skills/VENDORED.md`](.claude/skills/VENDORED.md) for the pinned commit, how
+to update them, and notes on using them with this repo.
+
 ## Jev as a shadow judge
 
 Jev is a TypeSafe AI decision model that scores each call alongside the Opus
