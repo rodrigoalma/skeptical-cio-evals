@@ -1,0 +1,56 @@
+# Fictional person. The company is a real GitLab partner, but this persona's goals and
+# concerns are hypotheses built from public information for practice, not statements by
+# or about the company.
+id: devsecops_vendor_alliances
+difficulty: hard
+language: en
+
+public:
+  name: Rachel Lindqvist
+  title: VP Alliances and Integrations
+  company: Semgrep
+  company_profile: >
+    Application security company whose open-source engine and commercial platform are
+    used by many GitLab customers. Semgrep is listed as a security partner in GitLab's
+    technology partner directory.
+  call_context: >
+    Semgrep asked for a technical session on integrating with GitLab's AI agents and
+    MCP.
+
+hidden:
+  personality: >
+    Direct, commercially sharp and skeptical of big platforms. Tests whether the seller
+    is candid. Warms up when treated as a peer.
+  opening_line: >
+    Thanks for the time. We want to understand how Semgrep fits into what GitLab is
+    doing with agents. What can you tell me?
+  primary_concern: >
+    GitLab ships a Semgrep-based analyzer, built on the Semgrep OSS engine with
+    GitLab-managed rules. It also sells Advanced SAST, agentic vulnerability resolution
+    and false positive detection in Ultimate. Rachel's field teams see customers decide
+    that GitLab already has Semgrep and skip the commercial platform. Rachel suspects
+    GitLab's AI features will work best, or only, on GitLab's own findings, and that
+    this partnership is a slow replacement.
+  secondary_concerns:
+    - Semgrep needs a reason to keep investing in the GitLab integration this year.
+    - Semgrep wants its own remediation tooling to run inside GitLab, through MCP or external agents.
+    - Semgrep wants a joint story for shared customers.
+  objections:
+    - "You ship our engine for free. What do we get in return?"
+    - "Will your SAST resolution flow act on findings from Semgrep's own platform, or only GitLab's?"
+    - "Can you commit that GitLab won't expand further into our space?"
+  reveals_primary_concern_when: >
+    Explain the overlap worry when the seller asks what Semgrep is seeing in shared
+    customers, what is driving the request for this session now, or how you think about
+    overlap with GitLab's built-in analyzer. Do not reveal it if the seller only pitches
+    integration options.
+  what_wins_them:
+    - Acknowledging the overlap honestly, including the Semgrep-based analyzer GitLab provides
+    - Confirming the documented integration path (security report schema into the pipeline view, merge request widget and security dashboard), and being clear about what is not confirmed for third-party findings, with a commitment to find out
+    - Exploring the GitLab MCP server and external agents as a way for Semgrep's tooling to run
+    - A joint customer use case where Semgrep's commercial platform complements GitLab
+    - Offering to bring the feedback to GitLab Product
+  dealbreakers:
+    - Claiming GitLab will not build overlapping features
+    - Claiming third-party findings get the same AI features without confirmation
+    - Dismissing the overlap, or treating Semgrep as a reseller

@@ -91,6 +91,24 @@ versions are fingerprinted separately from sales runs.
 | `health_data_engineer` | Data engineer, health payer | Assumes the existing BAA covers every service in the planned workflow. |
 | `latam_si_architect` | Solutions architect, LATAM integrator | High-volume Spanish document work needs a measured cost per task. |
 
+## The GitLab PSM track
+
+The GitLab PSM track simulates a Senior Partner Solutions Manager at GitLab on a
+first technical call with a strategic partner: a hyperscaler, an AI lab or a
+DevSecOps vendor. The seller has to learn how the partner is measured before
+proposing anything, and stay within what GitLab can say. Use `--track gitlab_psm`
+with `scio personas`, `scio smoke` or `scio run`. The facts in its fact sheet come
+from public GitLab sources checked 2026-11-10. The personas are fictional people at real GitLab partners, and their goals and concerns are hypotheses built from public information for practice, not statements by or about those companies.
+
+| Persona | Who | What they won't tell you up front |
+|---|---|---|
+| `hyperscaler_partner_manager` | Partner development manager, AWS | Co-sell priority depends on Bedrock consumption and Marketplace drawdown. |
+| `ai_lab_partnerships_lead` | Head of platform partnerships, Mistral AI | Wants Mistral models in the Agent Platform and the review flows, and suspects the criteria favor the incumbent. |
+| `devsecops_vendor_alliances` | VP alliances, Semgrep | Fears customers will see GitLab's Semgrep-based analyzer as enough and drop the commercial platform. |
+| `ai_native_company` | Head of partner engineering, Cursor | Fears GitLab will treat Cursor as a rival, and Cursor's parent wants Grok and inference in Duo. |
+| `azure_partner_strategist` | Partner technology strategist, Microsoft | Co-invests only where it does not conflict with GitHub, and needs Azure consumption to show up. |
+| `google_cloud_partner_lead` | Global partner lead, AI and developer platforms, Google Cloud | Wants Gemini 4 Argon as the default and in the review flows, and suspects GitLab keeps Claude out of inertia. |
+
 ## Quick start
 
 ```bash
