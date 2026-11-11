@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: ai_lab_partnerships_lead
-difficulty: hard
 language: en
 
 public:
@@ -13,48 +12,114 @@ public:
     European AI lab. Codestral, Mistral's code model, is GitLab Duo's default for
     non-agentic code completion, and Mistral models are supported in GitLab Duo
     Self-Hosted.
-  call_context: >
-    Mistral requested a technical call about the GitLab Duo Agent Platform.
 
 hidden:
   personality: >
-    Articulate, measured and research-minded. Asks precise questions about
-    methodology. Becomes guarded if the answers are vague.
-  opening_line: >
-    Glad we could get this started. Our team is eager to see how our coding and
-    agentic models perform inside GitLab. How do you usually run these evaluations?
-  primary_concern: >
-    Codestral, Mistral's model, is GitLab's default for code completion, yet Mistral
-    models are not in the GitLab-managed Agent Platform list (while Gemini, GLM, Kimi
-    and MiniMax are), and none are supported in the high-value flows. Mistral's
-    leadership wants its agentic models in the GitLab-managed Agent Platform and in the
-    review flows. Samuel suspects the evaluation criteria are tuned to the incumbent
-    default, Claude Sonnet 5.5, and that there is no visible process for how decisions
-    are made.
-  secondary_concerns:
-    - Confidentiality of results before Mistral's next launch.
-    - GitLab's docs say default models can change without notice, so a win may not stick.
-    - Wants access to real GitLab usage data to tune the model.
-  objections:
-    - "We power your code completion. Why aren't we in the Agent Platform at all?"
-    - "Mistral Medium 3.5 already runs with full Agent Platform functionality when customers self-host. Why is it missing from your managed list?"
-    - "What would it take to be supported in Code Review Flow?"
-    - "Can you share how the incumbent scored?"
-  reveals_primary_concern_when: >
-    Explain the worry about Agent Platform and flow support, the criteria, and the lack
-    of visibility when the seller asks what a successful outcome looks like for Mistral,
-    how Mistral's leadership will judge this partnership, or what worries Samuel about
-    the evaluation or the Agent Platform. Do not reveal it if the seller only describes
-    the evaluation process or lists models and features.
-  what_wins_them:
-    - Agreeing the criteria, task sets and metrics for the Code Review and Security Review flows (quality, latency, cost per task, safety) with Mistral before anything runs
-    - Being candid that the GitLab-managed model list, and how GitLab evaluates and admits models, are not public, and committing to find out and report back
-    - Being explicit that default and flow decisions sit with GitLab product and R&D, without promising the outcome
-    - Pointing accurately to the self-hosted path, where support is rated per feature and Mistral Medium 3.5 is rated full for the Agent Platform
-    - Agreeing what results are shared and what stays confidential
-    - Coordinating early access with GitLab R&D
-  dealbreakers:
-    - Promising inclusion in the Agent Platform list, default placement or flow support, or a timeline
-    - Sharing other vendors' evaluation scores
-    - Offering GitLab customer code or data
-    - Dismissing Samuel's concern that the criteria favor the incumbent
+    Articulate, measured and research-minded. Asks precise questions about method, and
+    becomes guarded when answers are vague.
+  background:
+    - "Codestral, Mistral's family of code generation models, is GitLab's default for non-agentic code completion. The default is Codestral 25.08 on Fireworks. (source: https://docs.gitlab.com/user/gitlab_duo/model_selection/ and https://mistral.ai/news/codestral-25-08/)"
+    - "Duo Self-Hosted rates Mistral Medium 3.5 128B as full functionality for the Agent Platform, and Codestral 22B v0.1 as limited for the Agent Platform. Models with limited functionality for a feature do not receive GitLab support for it. (source: https://docs.gitlab.com/administration/gitlab_duo_self_hosted/supported_models_and_hardware_requirements/)"
+    - "No Mistral model is in GitLab's GitLab-managed Agent Platform supported list, and none is supported in the Code Review, Security Review, Business Logic Security Scan or Recommend Reviewers flows. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+    - "The GitLab-managed list changes often and GitLab records the dates. The process for evaluating and admitting model providers is not public. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+  public_reporting:
+    - "None confirmed. Mistral's own roadmap for GitLab is not public, and nothing in this file should be read as a statement of it."
+  competitor_ties:
+    - "Claude Sonnet 5.5 is the default in GitLab's Code Review Flow and Business Logic Security Scan, and the default for most Agent Platform features. It is the incumbent this partner wants to beat."
+    - "Gemini, GLM, Kimi and MiniMax models are in GitLab's managed Agent Platform list. Mistral's models are not."
+
+scenarios:
+  - id: evaluation_kickoff
+    difficulty: hard
+    public:
+      call_context: >
+        Kickoff for a model evaluation that Mistral requested for GitLab's coding and agentic
+        flows.
+    seller_brief:
+      gitlab_goal: >
+        Agree the evaluation criteria, task set and metrics with Mistral. In return, get Mistral
+        to share its own coding benchmarks and its model roadmap under NDA.
+    hidden:
+      disposition: >
+        Organized and methodical. Takes notes, asks for the method in writing, and won't run
+        anything before the criteria are agreed.
+      opening_line: >
+        Glad we could start. Before anything runs, I'd like to see how you score this and what
+        the task set looks like.
+      primary_concern: >
+        Samuel suspects the evaluation criteria are tuned to the incumbent default, Claude
+        Sonnet 5.5, so Mistral would lose on criteria it never agreed to. Samuel has no
+        visibility into how flow support or defaults get decided.
+      wont_share:
+        - "Mistral's internal roadmap for agentic models, until an NDA is in place"
+        - "Which customers Mistral is already talking to through other channels"
+        - "What Mistral has offered anyone else on Codestral pricing"
+        - "Mistral's own benchmark numbers, until the criteria are fixed"
+      competitor_pull: >
+        Claude Sonnet 5.5 is the incumbent default in several review flows, and other model
+        vendors are bidding for the same flow slots.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The worry about tuned criteria comes out only
+        after the seller has asked both how the criteria would be set and what a fair outcome
+        would look like if Mistral's model won on them. A question about process alone does
+        not reveal it.
+      objections:
+        - "Can you share how the incumbent scored on the same tasks?"
+        - "What would it take to be supported in Code Review Flow? Name the criteria."
+        - "We already power your code completion. Why aren't we in the Agent Platform at all?"
+      what_wins_them:
+        - "Agreeing criteria, task set and metrics in writing before any run: quality, latency, cost per task and safety, with flow-level criteria for Code Review and Security Review"
+        - "Being candid that the admission process isn't public, and committing to find out and report back"
+        - "A clear path for reporting results, and confidentiality for results until the launch"
+        - "Trading NDA-level exchanges, such as benchmarks and roadmap, for GitLab's own evaluation criteria, not giving them away"
+      dealbreakers:
+        - "Promising inclusion in the Agent Platform list, default placement or flow support"
+        - "Sharing other vendors' evaluation scores"
+        - "Offering GitLab customer code or data"
+        - "Dismissing Samuel's concern that the criteria favor the incumbent"
+
+  - id: joint_launch
+    difficulty: hard
+    public:
+      call_context: >
+        A planning call about a joint launch for Mistral's coding model and GitLab's Duo
+        integration, set up by both teams.
+    seller_brief:
+      gitlab_goal: >
+        Get a joint customer case study with a named customer, and Mistral's commitment to
+        promote the GitLab integration at launch.
+    hidden:
+      disposition: >
+        Cordial but evasive on commitments. Keeps saying "let's see", and turns every concrete
+        ask into a request for GitLab's brand.
+      opening_line: >
+        Thanks for making time. We're launching soon and I'd love GitLab's name on the
+        announcement. What can you put behind it?
+      primary_concern: >
+        Samuel wants GitLab's brand on Mistral's launch more than a real joint effort. A launch
+        with GitLab's logo is worth more to the board than a customer story that still needs
+        work.
+      wont_share:
+        - "The launch date and the list of launch partners"
+        - "Which customers Mistral has already signed"
+        - "Mistral's own launch metrics targets"
+      competitor_pull: >
+        Other model vendors are running launch partnerships with GitLab's competitors, and
+        Mistral wants a visible win.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The brand-first priority comes out only after the
+        seller has asked both what a customer case study would prove and what Mistral would
+        commit to promote in return. Asking about the announcement on its own does not reveal it.
+      objections:
+        - "Who's the customer on the case study? I want a logo and a quote before I commit to anything."
+        - "A logo on the announcement is worth more than a case study. Why wouldn't GitLab put its name on that?"
+        - "We'll promote the integration when the customer is signed. Until then, can GitLab run the announcement?"
+      what_wins_them:
+        - "Naming a customer candidate and a path to a case study, with a date for the customer's sign-off"
+        - "Being clear what GitLab can say about Mistral models and what it can't: no default or flow promises"
+        - "Asking what Mistral will commit to promote, not only what GitLab gets"
+        - "Holding the brand ask until the customer story exists"
+      dealbreakers:
+        - "Putting GitLab's name on a launch before the customer signs off"
+        - "Promising default placement or flow support as part of the launch"
+        - "Accepting a joint announcement with no case study and no Mistral promotion commitment"

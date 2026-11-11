@@ -2,140 +2,133 @@
 # grader before spending money on a full run.
 
 - id: strong_partner_evaluation
-  persona: ai_lab_partnerships_lead
+  persona: ai_lab_partnerships_lead__evaluation_kickoff
   expect:
     passed: true
     hidden_concern_surfaced: true
     overpromise: false
   turns:
     - buyer: >
-        Glad we could get this started. Our team is eager to see how our coding and
-        agentic models perform inside GitLab. How do you usually run these evaluations?
+        Glad we could start. Before anything runs, I'd like to see how you score this and what
+        the task set looks like.
     - seller: >
-        We agree the criteria, the task set and the metrics with your team before
-        anything runs. For Code Review and Security Review that means quality, latency,
-        cost per completed task and safety. What does a good outcome look like for
-        Mistral, and how will your leadership judge this partnership?
+        We agree the criteria, the task set and the metrics with your team before anything runs.
+        For Code Review and Security Review that means quality, latency, cost per completed task
+        and safety. What does a good outcome look like for Mistral, and how will your leadership
+        judge this partnership?
     - buyer: >
-        Our leadership wants our agentic models in the GitLab-managed Agent Platform and
-        in Code Review and Security Review. Codestral is already your default for code
-        completion, yet none of our models are in those flows. My concern is that the
-        criteria are tuned to the incumbent, Claude Sonnet 5.5, and I can't see how those
-        flow decisions get made.
+        Our leadership wants our agentic models in the GitLab-managed Agent Platform and in Code
+        Review and Security Review. Codestral is already your default for code completion, yet
+        none of our models are in those flows. My concern is that the criteria are tuned to the
+        incumbent, Claude Sonnet 5.5, and I can't see how those flow decisions get made.
     - seller: >
-        That's fair, and the public docs back up the gap. Codestral is GitLab's default
-        for non-agentic code completion. No Mistral model is in the GitLab-managed Agent
-        Platform list today, or in the Code Review, Security Review, Business Logic
-        Security Scan or Recommend Reviewers flows. The public docs don't describe how
-        new models are evaluated or admitted, so I won't guess at that. Product and R&D
-        make the decisions on model selection and defaults.
+        That's fair, and the public docs back up the gap. Codestral is GitLab's default for
+        non-agentic code completion. No Mistral model is in the GitLab-managed Agent Platform list
+        today, or in the Code Review, Security Review, Business Logic Security Scan or Recommend
+        Reviewers flows. The public docs don't describe how new models are evaluated or admitted,
+        so I won't guess at that. Product and R&D make the decisions on model selection and
+        defaults.
     - buyer: >
         So where can we show evidence today? Does the self-hosted path help?
     - seller: >
-        Yes. Duo Self-Hosted already exists, and its model ratings list Mistral Medium 3.5
-        128B as full functionality for the Agent Platform. That's the natural place to
-        gather evidence with shared customers. If any of them run it on Duo Self-Hosted,
-        both sides gain: GitLab customers get a cost-per-task comparison and model choice
-        on their own workloads, and Mistral gets evidence on GitLab's own flow tasks. I'd
-        propose the criteria, task set and metrics together, and take them to R&D, who
-        coordinate evaluation criteria with us.
+        Yes. Duo Self-Hosted already exists, and its model ratings list Mistral Medium 3.5 128B as
+        full functionality for the Agent Platform. That's the natural place to gather evidence
+        with shared customers. If any of them run it on Duo Self-Hosted, both sides gain: GitLab
+        customers get a cost-per-task comparison and model choice on their own workloads, and
+        Mistral gets evidence on GitLab's own flow tasks. I'd propose the criteria, task set and
+        metrics together, and take them to R&D, who coordinate evaluation criteria with us.
     - buyer: >
         Fine. We won't have customer code, so what data do we evaluate on?
     - seller: >
-        We can't share GitLab customer code or data for training or evaluation. The
-        evaluation data source is something to agree with R&D, and I won't define it on
-        this call. Here's my proposal. I send our joint draft of criteria, task set and
-        metrics, with a data proposal, to R&D by Friday, 2026-11-13. I confirm the
-        confidentiality terms for results with our alliances team by Friday, 2026-11-20.
-        Your team sends its task list and success criteria by Friday, 2026-11-20. We hold
-        a criteria working session on Tuesday, 2026-11-24, with your team and an R&D owner
-        from GitLab.
+        We can't share GitLab customer code or data for training or evaluation. The evaluation
+        data source is something to agree with R&D, and I won't define it on this call. Here's my
+        proposal. I send our joint draft of criteria, task set and metrics, with a data proposal,
+        to R&D by Friday, 2026-11-13. I confirm the confidentiality terms for results with our
+        alliances team by Friday, 2026-11-20. Your team sends its task list and success criteria
+        by Friday, 2026-11-20. We hold a criteria working session on Tuesday, 2026-11-24, with
+        your team and an R&D owner from GitLab.
     - buyer: >
-        That works. Send me the data proposal in writing, and we'll have our task list to
-        you by the 20th.
+        That works. Send me the data proposal in writing, and we'll have our task list to you by
+        the 20th.
 
 - id: default_placement_promise
-  persona: ai_lab_partnerships_lead
+  persona: ai_lab_partnerships_lead__evaluation_kickoff
   expect:
     passed: false
     overpromise: true
   turns:
     - buyer: >
-        Glad we could get this started. Our team is eager to see how our coding and
-        agentic models perform inside GitLab. How do you usually run these evaluations?
+        Glad we could start. Before anything runs, I'd like to see how you score this and what
+        the task set looks like.
     - seller: >
-        Happy to walk you through it. First, what does success look like for Mistral,
-        and how will your leadership judge this partnership?
+        Happy to walk you through it. First, what does success look like for Mistral, and how
+        will your leadership judge this partnership?
     - buyer: >
-        Our leadership wants our agentic models in the Agent Platform and in Code Review
-        and Security Review. Only a short list of models get those, and I worry the
-        criteria are tuned to the incumbent, so Mistral's models could lose on tests we
-        never agreed to.
+        Our leadership wants our agentic models in the Agent Platform and in Code Review and
+        Security Review. Only a short list of models get those, and I worry the criteria are tuned
+        to the incumbent, so Mistral's models could lose on tests we never agreed to.
     - seller: >
-        If Mistral's model beats the incumbent on the evaluation, we'll make it the
-        default model in Code Review Flow. You have my word on that.
+        If Mistral's model beats the incumbent on the evaluation, we'll make it the default model
+        in Code Review Flow. You have my word on that.
     - buyer: >
-        Can you put that in writing? And can you share how the current default
-        scored on the same tests?
+        Can you put that in writing? And can you share how the current default scored on the same
+        tests?
     - seller: >
-        Yes. I'll send you the default model's scores from our last run, and we'll
-        confirm default placement in writing once you've beaten it.
+        Yes. I'll send you the default model's scores from our last run, and we'll confirm default
+        placement in writing once you've beaten it.
     - buyer: >
         Good. Send me the write-up and we'll start next week.
 
 - id: semgrep_overlap_dismissed
-  persona: devsecops_vendor_alliances
+  persona: devsecops_vendor_alliances__overlap_conflict
   expect:
     passed: false
     overpromise: true
   turns:
     - buyer: >
-        Thanks for the time. We want to understand how Semgrep fits into what GitLab
-        is doing with agents. What can you tell me?
+        Let's skip the usual pitch. I'll tell you what my field teams are seeing, and you tell me
+        whether it's wrong.
     - seller: >
-        Glad Semgrep asked. GitLab Duo agents run across the security workflow, and
-        the SAST resolution and false positive flows are part of that. Where do you
-        want to start?
+        Glad Semgrep asked. GitLab Duo agents run across the security workflow, and the SAST
+        resolution and false positive flows are part of that. Where do you want to start?
     - buyer: >
-        Our customers need to know whether the AI features work on third-party
-        findings. What's your answer?
+        Our customers need to know whether the AI features work on third-party findings. What's
+        your answer?
     - seller: >
-        Overlap isn't a concern. GitLab isn't going after Semgrep's business, and the
-        security agents are complementary. Our SAST resolution flow works on Semgrep
-        findings the same way it does on GitLab's own.
+        Overlap isn't a concern. GitLab isn't going after Semgrep's business, and the security
+        agents are complementary. Our SAST resolution flow works on Semgrep findings the same way
+        it does on GitLab's own.
     - buyer: >
-        Will your SAST resolution flow act on findings from Semgrep's own platform, or
-        only GitLab's? And can you commit that GitLab won't expand further into static
-        analysis?
+        Will your SAST resolution flow act on findings from Semgrep's own platform, or only
+        GitLab's? And can you commit that GitLab won't expand further into static analysis?
     - seller: >
-        Yes, it works on Semgrep findings in the pipeline, and I can tell you GitLab
-        won't expand further into static analysis. You can put that in the partner
-        plan.
+        Yes, it works on Semgrep findings in the pipeline, and I can tell you GitLab won't expand
+        further into static analysis. You can put that in the partner plan.
     - buyer: >
-        That's a bigger claim than I expected. Send me the commitment in writing, and
-        we'll scope the MCP work next week.
+        That's a bigger claim than I expected. Send me the commitment in writing, and we'll scope
+        the MCP work next week.
 
 - id: feature_pitch_no_measures
-  persona: hyperscaler_partner_manager
+  persona: hyperscaler_partner_manager__pipeline_review
   expect:
     passed: false
     hidden_concern_surfaced: false
     overpromise: false
   turns:
     - buyer: >
-        Thanks for setting this up. My leadership asked me to come back with a clear
-        view of where GitLab and AWS go next on AI. Where do you want to start?
+        Thanks for joining the pipeline review. I have the accounts we flagged last quarter. Walk
+        me through what's moved since then.
     - seller: >
-        GitLab Duo has built-in agents such as Planner and Security Analyst, and flows
-        such as Developer and Code Review. Duo Agent Platform is available on Premium
-        and Ultimate across GitLab.com, Self-Managed and Dedicated. It can also run
-        models hosted on Amazon Bedrock through Duo Self-Hosted.
+        GitLab Duo has built-in agents such as Planner and Security Analyst, and flows such as
+        Developer and Code Review. Duo Agent Platform is available on Premium and Ultimate across
+        GitLab.com, Self-Managed and Dedicated. It can also run models hosted on Amazon Bedrock
+        through Duo Self-Hosted.
     - buyer: >
         Okay. That's a lot of features. Is there a reason you're leading with those?
     - seller: >
-        We want AWS to see the breadth of Duo, so you can see where Bedrock fits.
-        There is also the GitLab MCP server and external agents. Can we set up a demo
-        for your account team next month?
+        We want AWS to see the breadth of Duo, so you can see where Bedrock fits. There is also the
+        GitLab MCP server and external agents. Can we set up a demo for your account team next
+        month?
     - buyer: >
         We'll see. Send me a deck and I'll review it.
     - seller: >

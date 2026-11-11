@@ -4,7 +4,9 @@ Two calls share a test version when they used the same fact sheet, buyer
 setup, rubric and judge. Calls on the same version can be added together on
 the dashboard. The seller model, prompt and effort are left out on purpose:
 those are what you compare. Personas and seller prompts get a hash each, so
-editing one splits that persona or prompt instead of the whole version.
+editing one splits that persona or prompt instead of the whole version. A
+scenario case is hashed as its merged data, so only its own partner or scenario
+fields can split it.
 
 Runs from before fingerprints existed get one from git: the files as they
 were in the last commit before the run started.
@@ -15,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 
 import yaml
@@ -50,7 +52,21 @@ def _hash_files(kinds: tuple[str, ...], *, track: str, read: Reader) -> dict[str
     }
 
 
-def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], *, track: str, read: Reader | None = None) -> dict:
+def _cases(personas: Mapping[str, dict] | Iterable[str]) -> dict[str, dict]:
+    """Persona cases by id. A bare list of ids stands for plain persona files."""
+    if isinstance(personas, Mapping):
+        return dict(personas)
+    return {pid: {"id": pid} for pid in personas}
+
+
+def _persona_hash(case: dict, *, track: str, read: Reader) -> str:
+    """A scenario case is hashed as its merged data. A plain persona keeps the hash of its file."""
+    if "scenario_id" in case:
+        return file_hash(json.dumps(case, sort_keys=True, ensure_ascii=False))
+    return file_hash(read(loaders.persona_file_path(case["id"], track=track).as_posix()))
+
+
+def simulation(cfg: dict, personas, prompt_files: dict[str, str], *, track: str, read: Reader | None = None) -> dict:
     """prompt_files maps the prompt's name to its file stem, which differ only
     for runs saved before the basic/coached rename."""
     r = cfg["run"]
@@ -70,8 +86,8 @@ def simulation(cfg: dict, persona_ids, prompt_files: dict[str, str], *, track: s
         "files": _hash_files(SIM_FILES, track=track, read=read_file),
         "settings": settings,
         "personas": {
-            p: file_hash(read_file(loaders.track_file_path("persona", p, track=track).as_posix()))
-            for p in sorted(persona_ids)
+            case_id: _persona_hash(case, track=track, read=read_file)
+            for case_id, case in sorted(_cases(personas).items())
         },
         "seller_prompts": {
             n: file_hash(read_file(loaders.track_file_path("seller_prompt", stem, track=track).as_posix()))
@@ -120,9 +136,16 @@ def git_state(*, track: str) -> dict | None:
     return {"commit": commit, "dirty": bool(dirty)}
 
 
-def record(cfg: dict, persona_ids, prompt_names, *, track: str) -> dict:
-    fp = simulation(cfg, persona_ids, {n: n for n in prompt_names}, track=track)
+def record(cfg: dict, personas, prompt_names, *, track: str) -> dict:
+    fp = simulation(cfg, personas, {n: n for n in prompt_names}, track=track)
     return {**fp, "source": "recorded", "git": git_state(track=track)}
+
+
+def _source_path(kind: str, name: str, *, track: str) -> str:
+    """The file a persona or prompt comes from, for the message about what changed."""
+    if kind == "persona":
+        return loaders.persona_file_path(name, track=track).as_posix()
+    return loaders.track_file_path(kind, name, track=track).as_posix()
 
 
 def differences(old: dict, new: dict) -> list[str]:
@@ -138,7 +161,7 @@ def differences(old: dict, new: dict) -> list[str]:
         out.append("track")
     for group, kind in (("personas", "persona"), ("seller_prompts", "seller_prompt")):
         out += [
-            loaders.track_file_path(kind, k, track=new_track).as_posix()
+            _source_path(kind, k, track=new_track)
             for k in old[group]
             if k in new[group] and old[group][k] != new[group][k]
         ]
@@ -184,7 +207,7 @@ def from_git(meta: dict, calls: list[dict], *, track: str) -> dict | None:
         fp = simulation(cfg, {c["persona"] for c in calls}, prompts, track=loaders.DEFAULT_TRACK, read=read)
         files = grading_files(track=loaders.DEFAULT_TRACK, read=read)
         openings = {
-            p: yaml.safe_load(read(loaders.track_file_path("persona", p, track=track).as_posix()))["hidden"][
+            p: yaml.safe_load(read(loaders.persona_file_path(p, track=track).as_posix()))["hidden"][
                 "opening_line"
             ].strip()
             for p in fp["personas"]

@@ -278,7 +278,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--seller-models", help="Comma list of model names from config.yaml, e.g. haiku,sonnet")
     p.add_argument("--seller-prompts", help="Comma list, e.g. basic,coached")
     p.add_argument("--seller-efforts", help=f"Comma list of seller effort levels: {','.join(EFFORTS)}")
-    p.add_argument("--personas", help="Comma list of persona ids, or 'all'")
+    p.add_argument(
+        "--personas", help="Comma list of persona or scenario ids (a partner id selects all its scenarios), or 'all'"
+    )
     p.add_argument("--trials", type=int, help="Calls per combination")
     p.add_argument("--workers", type=int, help="Calls in parallel")
     p.add_argument("--judge", help="Model name for the judge")

@@ -100,14 +100,23 @@ proposing anything, and stay within what GitLab can say. Use `--track gitlab_psm
 with `scio personas`, `scio smoke` or `scio run`. The facts in its fact sheet come
 from public GitLab sources checked 2026-11-10. The personas are fictional people at real GitLab partners, and their goals and concerns are hypotheses built from public information for practice, not statements by or about those companies.
 
-| Persona | Who | What they won't tell you up front |
-|---|---|---|
-| `hyperscaler_partner_manager` | Partner development manager, AWS | Co-sell priority depends on Bedrock consumption and Marketplace drawdown. |
-| `ai_lab_partnerships_lead` | Head of platform partnerships, Mistral AI | Wants Mistral models in the Agent Platform and the review flows, and suspects the criteria favor the incumbent. |
-| `devsecops_vendor_alliances` | VP alliances, Semgrep | Fears customers will see GitLab's Semgrep-based analyzer as enough and drop the commercial platform. |
-| `ai_native_company` | Head of partner engineering, Cursor | Fears GitLab will treat Cursor as a rival, and Cursor's parent wants Grok and inference in Duo. |
-| `azure_partner_strategist` | Partner technology strategist, Microsoft | Co-invests only where it does not conflict with GitHub, and needs Azure consumption to show up. |
-| `google_cloud_partner_lead` | Global partner lead, AI and developer platforms, Google Cloud | Wants Gemini 4 Argon as the default and in the review flows, and suspects GitLab keeps Claude out of inertia. |
+Each partner file holds the shared facts once, in `background`, `public_reporting` and
+`competitor_ties`. Its `scenarios` hold what changes from one meeting to the next: the
+call context, what GitLab wants from it, and what the partner hides. A case id such as
+`ai_lab_partnerships_lead__evaluation_kickoff` selects one scenario, and a partner id
+such as `ai_lab_partnerships_lead` selects all of that partner's scenarios.
+
+| Partner | Scenario | Disposition | What the partner hides | GitLab's goal |
+|---|---|---|---|---|
+| AWS (`hyperscaler_partner_manager`) | `pipeline_review` | Guarded | AWS is behind on AI consumption and wants GitLab deals that move Bedrock usage. | Find out whether Marketplace deals count toward customers' AWS commitments, and agree three joint target accounts. |
+| AWS (`hyperscaler_partner_manager`) | `own_tools_overlap` | Cordial but evasive | AWS's developer AI team is pressuring partners to lead with Amazon Q Developer and Kiro. | Agree rules that keep AWS sellers from displacing Duo where the customer is on GitLab, and name an AWS escalation contact. |
+| Google Cloud (`google_cloud_partner_lead`) | `gemini_push` | Direct and confident | Lucia is measured on Gemini adoption, and the leadership wants a marquee win. | Find out what Google offers in return before GitLab promotes Gemini. No promises on defaults. |
+| Microsoft (`azure_partner_strategist`) | `github_conflict` | Direct and adversarial | Microsoft field teams favor GitHub, and Mei can't override them. | Agree rules for accounts already on GitLab, and name a Microsoft sponsor for escalations. |
+| Microsoft (`azure_partner_strategist`) | `early_access_process` | Organized, noncommittal on dates | Mei wants GitLab on Azure OpenAI models quickly, but Microsoft doesn't commit dates in advance. | Agree a repeatable early-access process with a timeline, an evaluation slot and named contacts. |
+| Mistral AI (`ai_lab_partnerships_lead`) | `evaluation_kickoff` | Organized and methodical | Samuel suspects the criteria favor the incumbent Claude default. | Agree criteria, task set and metrics, and get Mistral's benchmarks and roadmap under NDA. |
+| Mistral AI (`ai_lab_partnerships_lead`) | `joint_launch` | Cordial but evasive | Mistral wants GitLab's brand on the launch more than a real joint effort. | Get a joint customer case study, and Mistral's commitment to promote the integration. |
+| Cursor (`ai_native_company`) | `grok_and_inference` | Scattered | Daniel has three asks from SpaceXAI leadership at once: Grok in Duo, Grok Bot on merge requests, and inference. | Narrow the call to one item with a named decision owner, and get Grok pricing and data terms in writing. |
+| Semgrep (`devsecops_vendor_alliances`) | `overlap_conflict` | Direct and adversarial | Customers drop Semgrep's platform because they think GitLab already has Semgrep. | Agree a joint positioning statement for shared customers. |
 
 ## Quick start
 

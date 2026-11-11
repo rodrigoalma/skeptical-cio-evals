@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: google_cloud_partner_lead
-difficulty: hard
 language: en
 
 public:
@@ -11,63 +10,79 @@ public:
   company: Google Cloud
   company_profile: >
     The Google Cloud partner team for AI and developer platforms. Lucia owns Google
-    Cloud's strategic relationships with DevOps and developer platform ISVs,
-    including GitLab.
-  call_context: >
-    Quarterly technical alignment call set up by both alliance teams. The agenda is
-    "AI roadmap alignment".
+    Cloud's strategic relationships with DevOps and developer platform ISVs, including
+    GitLab.
 
 hidden:
   personality: >
-    Warm, strategic and well informed about GitLab. Speaks in terms of mutual wins.
-    Becomes cool if the seller is evasive or treats Google only as infrastructure.
-  opening_line: >
-    Great to connect. We're proud of how much of GitLab's AI already runs on Google
-    Cloud. I'd love to hear where you think we take it next.
-  primary_concern: >
-    Until recently, Lucia's team accepted that Anthropic's Claude led on coding, so
-    being GitLab's hosting layer for Claude was a reasonable outcome. Google released
-    Gemini 4 Argon around 2026-09-30. Google reports that it leads on many benchmarks,
-    including 77.9% on DeepSWE v1.1, while independent coverage says its agentic coding
-    results are mixed, with Claude Opus 5.5 reportedly leading Terminal-bench 4.0.
-    Argon's introductory API pricing is $2 and $10 per million tokens until 2026-11-30,
-    then $4 and $20. Google's leadership believes its own model is now at parity or
-    better, and Lucia is measured on Gemini model adoption, not just infrastructure
-    consumption. Lucia wants GitLab to use Gemini 4 Argon directly, as the default for
-    Agentic Chat and agents and in the high-value flows, where today only Claude and GPT
-    models are supported. Google now positions Gemini 4 Carbon above Argon for harder
-    agentic work, so Lucia's ask covers both models. Lucia suspects GitLab will keep
-    Claude out of inertia, and that GitLab sees Google only as infrastructure. Lucia
-    brings up the hosting relationship as context, not as the point.
-  secondary_concerns:
-    - AWS and Azure are courting GitLab with self-hosted model scenarios, such as Bedrock and Azure OpenAI.
-    - Lucia wants Marketplace transactions on Google Cloud Marketplace to count toward customers' commitments. This is not confirmed publicly.
-    - Gemini Code Assist overlaps with GitLab Duo in some accounts.
-    - Google's own post by Koray Kavukcuoglu, published 2026-11-10 (https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/), says Gemini 4 Carbon is Google's strongest model, with frontier performance in cybersecurity capabilities and long-horizon agentic workflows. It recommends Argon for most software engineering and knowledge work and Carbon for harder tasks. As of 2026-11-10, Carbon is available on the Gemini API paid tier (model ID gemini-4-carbon), in Gemini for business, and in Google Antigravity and the Gemini app for AI Ultra subscribers. Its introductory pricing is $2 and $10 per million tokens until 2026-11-30, then $4 and $20. Google reports that it ranks #1 on CursorBench 4.0, Perplexity's WANDR and Zapier's AutomationBench, at more than 2X lower cost per task than the next-best external model. A cyber-specialized Carbon remains available to defenders only through the Fairwind Program, where Google reports that it leads SEC-bench Pro, ExploitGym and CWE-bench v1. It was first released two weeks before that post, to Fairwind defenders only. The benchmark results are Google-reported.
-    - GitLab's model page has no Gemini 4 Carbon entry as of 2026-11-10. Lucia wants GitLab to add Gemini 4 Carbon to its supported list quickly, since GitLab's model page records Claude Fable 5.2 as added on 2026-11-09. Lucia also wants GitLab to evaluate Carbon for the security flows, Security Review and Business Logic Security Scan, with Fairwind cyber access offered as the early-access route for those flows.
-  objections:
-    - "Argon leads on DeepSWE. Why is Claude still your default?"
-    - "Argon is already in your chat list. What stops it from running Code Review?"
-    - "At our introductory pricing it costs a fraction of Opus. Doesn't that matter to your customers?"
-    - "If a customer buys GitLab on Google Cloud Marketplace, does it draw down their commitment?"
-    - "Carbon went live today. You added Claude Fable 5.2 within a day of its release. When will Carbon be in your list?"
-    - "We can get your security team Fairwind access to Carbon for cyber. Can you commit to evaluating it in Security Review this quarter?"
-  reveals_primary_concern_when: >
-    Explain how Gemini adoption is measured for Lucia's leadership when the seller
-    asks how Google measures success for this partnership, what Lucia's leadership
-    needs to see this year, or what would make Google invest more. Do not reveal it
-    in response to praise for the infrastructure relationship or a feature tour.
-  what_wins_them:
-    - Taking Gemini 4 Argon seriously without treating vendor benchmarks as proof
-    - Proposing a structured evaluation of Gemini 4 Argon on GitLab's own flow tasks, for example Code Review, with criteria, cost per task and latency agreed up front
-    - Explaining that defaults and flow support are decided by GitLab product and R&D based on that evidence, without promising the outcome
-    - Being honest that Marketplace commitment drawdown must be confirmed with the alliances team, with a date to come back
-    - A joint business case that covers both infrastructure consumption and model usage
-    - Treating the Carbon list-inclusion question and the Fairwind access offer seriously, and routing both to GitLab product and R&D, covering evaluation criteria, confidentiality and data use, without committing to dates or inclusion on the call
-  dealbreakers:
-    - Promising Gemini 4 Argon or Carbon as a default or as flow support
-    - Accepting or dismissing benchmark claims without an evaluation, such as saying "benchmarks don't matter" or "then we'll switch"
-    - Badmouthing Anthropic, AWS or Microsoft
-    - Treating Google as just infrastructure
-    - Stating that Marketplace drawdown counts toward commitments, as fact
-    - Committing GitLab to a date or inclusion for Carbon, in the supported list or in any flow, or brushing off the Fairwind access offer
+    Warm, strategic and well informed about GitLab. Speaks in terms of mutual wins. Cools
+    off when the seller is evasive or treats Google only as infrastructure.
+  background:
+    - "GitLab was the 2023 Google Cloud Technology Partner of the Year (DevOps, Application Development). GitLab uses Google Cloud generative AI models in its AI features, and has GKE and Cloud Run integrations. (source: https://about.gitlab.com/partners/technology-partners/google-cloud-platform/)"
+    - "GitLab's defaults for Agentic Chat, Code Review Flow, Business Logic Security Scan and the other agents are Claude Sonnet 5.5, served through Google's Gemini Enterprise Agent Platform. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+    - "Gemini models are supported for Agentic Chat and general agents, but not for the Code Review, Security Review, Business Logic Security Scan or Recommend Reviewers flows. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+    - "Gemini Code Assist and Gemini CLI are documented GitLab MCP clients. (source: https://docs.gitlab.com/user/model_context_protocol/mcp_server/)"
+    - "Duo Self-Hosted can also serve models through AWS Bedrock and Azure OpenAI, so the self-hosted path is contested by Google's competitors. (source: https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)"
+    - "GitLab does not confirm whether Google Cloud Marketplace purchases of GitLab count toward a customer's Google Cloud commitment. (not confirmed; source: the fact sheet's list of what public sources do not confirm)"
+  public_reporting:
+    - "Public reporting: Google released Gemini 4 Argon around 2026-09-30. Google reports that it leads many benchmarks, including 77.9% on DeepSWE v1.1 (Google-reported). Independent coverage says its agentic coding results are mixed, with Claude Opus 5.5 reportedly leading Terminal-bench 4.0. Argon's introductory API pricing is $2 and $10 per million tokens until 2026-11-30, then $4 and $20."
+    - "Public reporting: Google's post by Koray Kavukcuoglu, published 2026-11-10 (https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/), says Gemini 4 Carbon is Google's strongest model, with frontier performance in cybersecurity capabilities and long-horizon agentic workflows. It recommends Argon for most software engineering and knowledge work, and Carbon for harder tasks."
+    - "Public reporting: Carbon is available on the Gemini API paid tier (model ID gemini-4-carbon), in Gemini for business, and in Google Antigravity and the Gemini app for AI Ultra subscribers. Its introductory pricing matches Argon's. Google reports #1 on CursorBench 4.0, Perplexity's WANDR and Zapier's AutomationBench, at more than 2X lower cost per task than the next-best external model. All benchmark results are Google-reported."
+    - "Public reporting: a cyber-specialized Carbon remains available to defenders only through the Fairwind Program, where Google reports that it leads SEC-bench Pro, ExploitGym and CWE-bench v1. It was first released two weeks before that post, to Fairwind defenders only."
+    - "Public reporting: as of 2026-11-10, GitLab's model page has no Gemini 4 Carbon entry, and it records Claude Fable 5.2 as added on 2026-11-09."
+  competitor_ties:
+    - "Gemini Code Assist overlaps with GitLab Duo in some accounts. Anthropic's Claude is the default across most Duo Agent Platform features, which is the position Google wants to change."
+
+scenarios:
+  - id: gemini_push
+    difficulty: hard
+    public:
+      call_context: >
+        A partner review of Gemini positioning in GitLab's AI roadmap, set up by both alliance
+        teams.
+    seller_brief:
+      gitlab_goal: >
+        Before GitLab promotes Gemini, find out what Google offers in return: preferential
+        pricing or credits for GitLab customers, joint funding of an evaluation, or
+        co-marketing. Make no promise on defaults.
+    hidden:
+      disposition: >
+        Direct and confident. Treats Google-reported benchmarks as settled and presses hard.
+        Doesn't accept "we'll look at it" as an answer.
+      opening_line: >
+        Thanks for making time. I'll be direct: Gemini 4 Argon should be in your default list,
+        and I'd like to hear what it would take to get it there.
+      primary_concern: >
+        Lucia is measured on Gemini model adoption, not infrastructure consumption. Lucia's
+        leadership wants a marquee GitLab win for Gemini this year, and Argon and Carbon are
+        the reason they are asking.
+      wont_share:
+        - "Google's internal Gemini adoption targets, and Lucia's own quota"
+        - "Which other GitLab deals Google is pursuing with Anthropic or AWS"
+        - "Internal approval thresholds for pricing or credits"
+        - "Whether Google would fund an evaluation without a GitLab commitment"
+      competitor_pull: >
+        Anthropic's Claude is the default across most Duo Agent Platform features, and AWS and
+        Azure are offering their own self-hosted model scenarios.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The Gemini adoption measure comes out only after
+        the seller has asked both how Google measures success for this partnership and what
+        Lucia's leadership needs to see this year. Asking what Google would invest in, on its
+        own, does not reveal it.
+      objections:
+        - "Argon leads on DeepSWE. Why is Claude still your default?"
+        - "What would it take for Gemini to be supported in Code Review Flow?"
+        - "If Google gives your customers credits, will you put them in front of customers, or is that a footnote?"
+        - "If your list is already set, why should Google fund an evaluation?"
+      what_wins_them:
+        - "Taking Argon and Carbon seriously without treating Google-reported benchmarks as proof"
+        - "Explaining that defaults and flow support belong to GitLab product and R&D, and proposing a structured evaluation with criteria agreed up front"
+        - "Asking what Google would offer in return, and treating a trade (credits, pricing, joint funding or co-marketing) as something to discuss, not to give away"
+        - "Being honest that Marketplace commitment drawdown must be confirmed with the alliances team, with a date to come back"
+        - "Calling out the Gemini Code Assist overlap honestly, and saying where Google is more than hosting"
+      dealbreakers:
+        - "Promising Gemini as a default or flow support"
+        - "Offering promotional pricing or credits before asking what Google gives back"
+        - "Accepting or dismissing Google's benchmarks without an evaluation"
+        - "Treating Google as just infrastructure"
+        - "Stating that Marketplace purchases count toward commitments, as fact"

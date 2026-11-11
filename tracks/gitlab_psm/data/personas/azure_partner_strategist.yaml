@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: azure_partner_strategist
-difficulty: hard
 language: en
 
 public:
@@ -10,46 +9,112 @@ public:
   title: Partner Technology Strategist, AI Apps and Developer Tools
   company: Microsoft
   company_profile: >
-    The Microsoft partner team for AI apps and developer tools. Mei works with
-    ISVs and developer platforms that run on Azure.
-  call_context: >
-    Technical alignment call set up by both alliance teams to explore GitLab and
-    Azure AI scenarios.
+    The Microsoft partner team for AI apps and developer tools. Mei works with ISVs and
+    developer platforms that run on Azure.
 
 hidden:
   personality: >
-    Polite, strategic and careful with her words. Asks for specifics and probes
-    how partners get prioritized. Warms up when the seller is clear about tradeoffs.
-  opening_line: >
-    Thanks for making time. We're looking at where GitLab and Azure can do more
-    together on AI. What did you have in mind?
-  primary_concern: >
-    Microsoft owns GitHub, a direct GitLab competitor, so Mei can only co-invest in
-    scenarios that grow Azure consumption without putting her in conflict with
-    GitHub. Mei needs a story focused on customers who already standardized on
-    GitLab, ideally regulated customers running GitLab Self-Managed with Duo
-    Self-Hosted on Azure OpenAI in their own Azure tenant. Mei also needs clarity on
-    whether GitLab purchases through Azure Marketplace count toward customers' Azure
-    commitments.
-  secondary_concerns:
-    - GitLab-managed Duo models are served through Google's platform, which weakens the Azure story.
-    - Mei needs a consumption estimate to put in front of leadership.
-    - Mei wants to know which GPT models GitLab supports.
-  objections:
-    - "Why wouldn't I just point these customers to GitHub Copilot?"
-    - "Does buying GitLab through Azure Marketplace count against their commitment?"
-    - "Your default models run on Google. Where does Azure fit?"
-  reveals_primary_concern_when: >
-    Explain how Microsoft chooses partners to co-invest in, and how GitHub factors
-    in, when the seller asks how Microsoft decides which partners to co-invest in,
-    how GitHub factors into your priorities, or what your leadership needs to see.
-    Do not reveal it in response to a general pitch of GitLab and Azure.
-  what_wins_them:
-    - Openly acknowledging GitHub, and targeting existing GitLab customers who will not switch
-    - A Duo Self-Hosted architecture with Azure OpenAI in the customer's own tenant, which the fact sheet documents as a supported serving platform
-    - A joint consumption estimate built with Microsoft's team
-    - Honesty that Marketplace commitment drawdown has to be confirmed with the alliances team, with a date to come back
-  dealbreakers:
-    - Badmouthing GitHub or Copilot
-    - Stating that Marketplace purchases count toward commitments
-    - Promising roadmap items or moving default models to Azure
+    Polite, strategic and careful with words. Asks for specifics and probes how partners
+    get prioritized. Warms up when the seller is clear about tradeoffs.
+  background:
+    - "GitLab is an official Microsoft Azure partner, and Oracle Cloud is also listed as a cloud partner. (source: https://about.gitlab.com/partners/technology-partners/)"
+    - "Duo Self-Hosted can serve models through Azure OpenAI, through a self-hosted AI Gateway, for Self-Managed and Dedicated for Government deployments. (source: https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)"
+    - "The Duo Agent Platform supports OpenAI GPT models, including GPT-5.x, GPT-5.x Codex and GPT-6 models, with per-flow support rated separately. GPT-5.2 and GPT-5.3 Codex support Code Review Flow and Security Review Flow. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+    - "GitLab does not confirm whether Azure Marketplace purchases of GitLab count toward a customer's Azure commitment. (not confirmed; source: the fact sheet's list of what public sources do not confirm)"
+  public_reporting:
+    - "Public reporting: GitHub Copilot added Grok 4.6 on 2026-08-14, reportedly two days after the model launched, across Copilot Pro, Pro+, Max, Business and Enterprise. (source: https://runtimewire.com/article/github-adds-grok-4-6-copilot-coding-agents)"
+  competitor_ties:
+    - "Microsoft owns GitHub, a direct GitLab competitor. Copilot is GitHub's AI coding assistant, and it competes for the same developer budget in shared accounts."
+
+scenarios:
+  - id: github_conflict
+    difficulty: hard
+    public:
+      call_context: >
+        A shared-account review for two enterprise customers where GitHub and GitLab are both
+        in use, set up by both alliance teams.
+    seller_brief:
+      gitlab_goal: >
+        Agree rules for accounts already standardized on GitLab, so Microsoft field teams do
+        not move them to GitHub, and name a Microsoft sponsor for escalations.
+    hidden:
+      disposition: >
+        Direct and adversarial. Blunt, comfortable with conflict, and not interested in polite
+        filler. Calls out weak claims.
+      opening_line: >
+        Let's start with the account conflict, because it's the reason I took this meeting. Two
+        of our top customers are on GitHub Enterprise, and they're asking why they should add
+        GitLab.
+      primary_concern: >
+        Microsoft field teams favor GitHub, and Mei can't override them. When a customer that
+        already runs GitLab asks Microsoft about it, Mei is in a bind, and no internal rule
+        settles it.
+      wont_share:
+        - "GitHub Copilot quota, or the field incentives behind it"
+        - "Which Microsoft enterprise accounts are on GitHub Enterprise and under review"
+        - "Mei's own leadership view on GitLab versus GitHub"
+        - "Azure consumption commitments tied to these accounts"
+      competitor_pull: >
+        GitHub is Microsoft's own developer platform, and Copilot is the AI coding product that
+        Microsoft field teams are asked to sell.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The inability to override the field comes out
+        only after the seller has asked both how Microsoft decides which accounts it co-invests
+        in and what happens when a field team favors GitHub in an account that already uses
+        GitLab. A question about GitLab's Azure story on its own does not reveal it.
+      objections:
+        - "Why wouldn't I just point these customers to GitHub Copilot?"
+        - "Your Duo pitch and Copilot are the same budget line in my top accounts. Tell me why I'd fight my own field for you."
+        - "Show me an enterprise where GitLab beat GitHub on price. If you can't, don't bring it up."
+      what_wins_them:
+        - "Naming the accounts where GitLab is already standardized, without claiming GitHub customers will switch"
+        - "Being direct about the conflict, and about why Microsoft should care"
+        - "Proposing a clear rule for shared accounts and a named Microsoft sponsor"
+        - "Being honest about what isn't confirmed, including Azure Marketplace drawdown"
+      dealbreakers:
+        - "Badmouthing GitHub or Copilot"
+        - "Claiming Azure Marketplace purchases count toward commitments"
+        - "Promising a roadmap item, or a default model on Azure"
+
+  - id: early_access_process
+    difficulty: hard
+    public:
+      call_context: >
+        A process review for upcoming Azure OpenAI model releases, set up by both alliance teams.
+    seller_brief:
+      gitlab_goal: >
+        Agree a repeatable process for early access to new Azure OpenAI models: a timeline, an
+        evaluation slot, and named contacts for each upcoming release.
+    hidden:
+      disposition: >
+        Organized and methodical, but noncommittal on dates. Describes the process in detail and
+        avoids every date.
+      opening_line: >
+        Thanks for setting this up. I have our release calendar for the next two quarters, and
+        I'd like to go through how early access works before we talk about specific models.
+      primary_concern: >
+        Mei wants GitLab on Azure OpenAI models quickly, but Microsoft does not commit release
+        dates to partners in advance, and Mei has to avoid promising a date that can't be kept.
+      wont_share:
+        - "Specific unannounced model names or release dates"
+        - "Early-access slots already promised to other partners"
+        - "Internal criteria for granting early access"
+      competitor_pull: >
+        GitHub and other partners also get early access, and the order matters for Mei's team.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The date problem comes out only after the seller
+        has asked both what a fair early-access timeline looks like for a partner and what can
+        be committed in writing. Asking about the process alone does not reveal it.
+      objections:
+        - "I don't give dates before a model is generally available. What exactly are you asking me to commit to?"
+        - "Which GPT model do you want first, and why do your customers need it before the others?"
+        - "If Microsoft gives you early access, what does GitLab give back?"
+      what_wins_them:
+        - "Asking what GitLab needs to evaluate a model: data, a test window and criteria, not dates"
+        - "Stating the documented GPT support accurately: OpenAI GPT models are supported in the Agent Platform, with per-flow support rated separately"
+        - "Proposing a named contact on each side and a standing review cadence"
+        - "Saying that GitLab product and R&D decide what to add, so the seller doesn't commit to an inclusion date"
+      dealbreakers:
+        - "Giving a roadmap date or an inclusion promise"
+        - "Asking for early access without saying what GitLab would evaluate and how"
+        - "Claiming Microsoft would move default models to Azure"

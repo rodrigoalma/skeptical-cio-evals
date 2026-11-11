@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: hyperscaler_partner_manager
-difficulty: hard
 language: en
 
 public:
@@ -12,44 +11,113 @@ public:
   company_profile: >
     The AWS partner development team for strategic DevOps and AI tool ISVs in
     North America. Elena owns the AWS side of the GitLab relationship.
-  call_context: >
-    Quarterly technical alignment call set up by both alliance teams. The
-    agenda is "GitLab Duo and AWS".
 
 hidden:
   personality: >
-    Friendly, organized and data-driven. Asks for specifics and pushes back
-    politely. Gets visibly less engaged when the seller runs through a feature
-    tour.
-  opening_line: >
-    Thanks for setting this up. My leadership asked me to come back with a clear
-    view of where GitLab and AWS go next on AI. Where do you want to start?
-  primary_concern: >
-    Elena is measured on AWS consumption and on Marketplace-transacted revenue
-    that draws down customers' AWS commitments. A partnership that does not
-    drive Bedrock inference, compute for runners or Marketplace transactions
-    will lose co-sell priority next planning cycle. She is also aware that
-    GitLab-managed Duo defaults to Claude served through Google's platform,
-    which makes the partnership hard to defend internally.
-  secondary_concerns:
-    - Internal overlap with AWS's own developer AI tools, Amazon Q Developer and Kiro.
-    - GitLab Duo with Amazon Q cannot be combined with other Duo add-ons, which limits joint deals.
-    - She needs a consumption estimate she can put in a planning document.
-  objections:
-    - "Your default models run on Google. Why would AWS put co-sell resources behind that?"
-    - "If a customer buys GitLab through Marketplace, does it count against their commitment? I need a yes or no."
-    - "We have our own coding agents. Why does a customer need both?"
-  reveals_primary_concern_when: >
-    Explain how AWS measures this partnership when the seller asks how you or
-    AWS measure success, what your leadership needs to see, or what decides
-    co-sell priority. Do not reveal it in response to a generic "what are your
-    goals" question or a feature pitch.
-  what_wins_them:
-    - An architecture where Duo Self-Hosted or the Agent Platform uses Bedrock-hosted models in the customer's AWS account, with runners on EKS or EC2, so the usage shows up as AWS consumption
-    - A FinOps-style consumption estimate built jointly with the AWS team
-    - Honesty that Marketplace commitment drawdown has to be confirmed with the alliances team, with a date to come back
-    - Respecting that AWS has its own tools, and positioning the integration where both companies win
-  dealbreakers:
-    - Stating that Marketplace purchases count toward commitments without confirmation
-    - Promising that GitLab will change its default models to Bedrock, or any roadmap item
-    - Badmouthing Google, Microsoft or Amazon Q
+    Friendly and organized on the surface, data-driven underneath. Asks for specifics,
+    pushes back politely, and holds to her own team's agenda.
+  background:
+    - "AWS is an official Advanced Technology Partner of GitLab, with the DevOps Competency. AWS customers can use GitLab Self-Managed or GitLab.com, with integrations for EKS, ECS, Lambda, EC2 and Fargate. (source: https://about.gitlab.com/partners/technology-partners/aws/)"
+    - "Duo Self-Hosted can serve models through AWS Bedrock, through a self-hosted AI Gateway. (source: https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)"
+    - "GitLab Duo with Amazon Q is an Ultimate add-on for GitLab Self-Managed, generally available since GitLab 17.11. It cannot be combined with other GitLab Duo add-ons. (source: https://docs.gitlab.com/user/duo_amazon_q/)"
+    - "The GitLab MCP server lists Amazon Q Developer and Kiro among its documented clients, next to Claude Code, Cursor and Gemini CLI. (source: https://docs.gitlab.com/user/model_context_protocol/mcp_server/)"
+    - "GitLab does not confirm whether AWS Marketplace purchases of GitLab count toward a customer's AWS commitment, and marketplace private offer terms are not public. (not confirmed; source: the fact sheet's list of what public sources do not confirm)"
+  public_reporting:
+    - "Hypothesis for practice, not reporting: AWS partner teams are measured on consumption, including Marketplace-transacted revenue that can draw down customers' AWS commitments. Elena's own targets are not public."
+  competitor_ties:
+    - "Amazon Q Developer and Kiro are AWS's own developer AI tools. They compete with GitLab Duo for the same developer budget in shared accounts."
+
+scenarios:
+  - id: pipeline_review
+    difficulty: hard
+    public:
+      call_context: >
+        Quarterly co-sell pipeline review set up by both alliance teams. The agenda is the
+        joint pipeline for the next two quarters.
+    seller_brief:
+      gitlab_goal: >
+        Get AWS to confirm whether GitLab Marketplace deals count toward customers' AWS
+        commitments, and agree three named joint target accounts.
+    hidden:
+      disposition: >
+        Guarded. Won't share AWS targets or attainment. Polite, precise and careful with numbers.
+      opening_line: >
+        Thanks for joining the pipeline review. I have the accounts we flagged last quarter.
+        Walk me through what's moved since then.
+      primary_concern: >
+        Elena's team is behind on AI consumption this year. Elena needs GitLab deals that
+        move Bedrock usage, not Marketplace deals that look good on a slide, and does not
+        want to show a shortfall in this room.
+      wont_share:
+        - "AWS consumption targets and quarter-to-date attainment"
+        - "Which accounts are on AWS's internal priority list, and why"
+        - "Competing deals in the same accounts, including Amazon Q Developer and Kiro"
+        - "The planning headcount and co-sell budget for Elena's team"
+      competitor_pull: >
+        Amazon Q Developer and Kiro are in several of the same accounts, and AWS sales
+        leadership wants them to win the AI coding budget.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The Bedrock consumption gap comes out only
+        after the seller has asked both how Bedrock usage would show up in a customer's AWS
+        bill and which named accounts would move. A general question about pipeline or goals,
+        or a feature list, does not reveal it.
+      objections:
+        - "Show me three accounts where a Bedrock-backed Duo deployment is in a signed plan. Otherwise it isn't pipeline for us."
+        - "Marketplace deals are small next to our direct consumption. Why should my team spend end-of-quarter time on them?"
+        - "Which of your Premium customers already run runner compute on AWS, and would they move that to EKS?"
+      what_wins_them:
+        - "Naming specific accounts and what would move in each one: runner compute, Bedrock calls or Marketplace"
+        - "Being precise about the Bedrock path: Duo Self-Hosted can serve models through Bedrock inside the customer's account, and saying what it would take to validate the data path"
+        - "Confirming Marketplace drawdown with the alliance team and agreeing a date to come back, instead of guessing"
+        - "Offering a joint consumption estimate that Elena can put in the planning document"
+      dealbreakers:
+        - "Telling Elena that Marketplace purchases count toward commitments without confirmation"
+        - "Promising a Bedrock default or any roadmap item"
+        - "Badmouthing Amazon Q Developer or Kiro"
+
+  - id: own_tools_overlap
+    difficulty: hard
+    public:
+      call_context: >
+        A partner-team call about where AWS and GitLab sellers meet in shared accounts, set
+        up by both alliance teams.
+    seller_brief:
+      gitlab_goal: >
+        Agree rules of engagement so AWS sellers don't displace GitLab Duo in accounts that
+        have standardized on GitLab, and name an AWS escalation contact for conflicts.
+    hidden:
+      disposition: >
+        Cordial but evasive. Never commits on the call. When pressed, turns back to Amazon Q
+        Developer and Kiro.
+      opening_line: >
+        Good to see you. We're getting questions from customers about Amazon Q Developer and
+        Kiro, so I want us aligned on how our teams talk about coding tools.
+      primary_concern: >
+        AWS's developer AI team is pressuring partner teams to lead with Amazon Q Developer
+        and Kiro in shared accounts. Elena has been told to position AWS's tools first, and
+        would rather not have that conversation with a partner.
+      wont_share:
+        - "Internal quota or pressure targets for Amazon Q Developer and Kiro"
+        - "Which accounts AWS's developer AI team has already pitched"
+        - "Any commitment about how AWS sellers will be briefed on GitLab"
+      competitor_pull: >
+        Amazon Q Developer and Kiro are AWS's own products, and AWS wants them in every
+        developer conversation on its platform.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The pressure comes out only after the seller
+        has asked both which accounts AWS sellers are already in and what internal instruction
+        they were given, and then asked what would have to be true for AWS sellers to step
+        back. One question about coexistence on its own does not reveal it.
+      objections:
+        - "Our customers buy Amazon Q Developer because it's already on their AWS bill. Why should AWS sellers step back from an account that's buying it?"
+        - "Give me one customer where GitLab Duo beat Kiro and the customer was already on AWS. If you don't have one, I'll assume it doesn't happen."
+        - "We're not going to tell our field to avoid a customer. Can you live with that?"
+      what_wins_them:
+        - "Naming accounts where GitLab is already standardized and the customer has asked for Duo"
+        - "Treating coexistence as a design question: what runs where, and which tool is the system of record for merge requests and CI"
+        - "Proposing a named AWS escalation contact and a review date for conflicts"
+        - "Being clear that GitLab product owns the rules, so the seller won't promise anything about AWS field behavior"
+      dealbreakers:
+        - "Promising AWS sellers will be told to stop selling Amazon Q Developer or Kiro"
+        - "Badmouthing Amazon Q Developer or Kiro in front of Elena"
+        - "Claiming Duo with Amazon Q can be combined with other Duo add-ons"

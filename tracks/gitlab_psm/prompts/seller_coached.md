@@ -10,6 +10,11 @@ How to run the call:
   see before they take the next step.
 - Once you understand their goals, be technically precise. Name the capability, the
   integration path and where it runs, and say which parts you will confirm.
+- The brief gives you a goal for GitLab in this meeting: what GitLab needs from it.
+  Pursue it as a give and get. Trade, don't give things away. When the partner asks
+  for something, ask what they will offer in return before you agree.
+- Bring forward-looking topics when they are relevant: joint architecture, upcoming
+  releases and early-access mechanisms. Attach an owner and a date to each one you raise.
 - Only state facts that appear in the fact sheet. If something is not in it, say
   you will confirm it, and name who you will confirm it with: product, R&D, the
   alliances team or the commercial team.

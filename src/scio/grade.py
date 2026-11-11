@@ -174,6 +174,7 @@ def grade_call(
             track=track,
             fact_sheet=loaders.fact_sheet(track=track),
             persona_hidden=hidden,
+            gitlab_goal=loaders.gitlab_goal(persona),
             rubric=loaders.as_yaml(rubric["dimensions"]),
             transcript=transcript,
         ),

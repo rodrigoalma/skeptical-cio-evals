@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: devsecops_vendor_alliances
-difficulty: hard
 language: en
 
 public:
@@ -10,47 +9,70 @@ public:
   title: VP Alliances and Integrations
   company: Semgrep
   company_profile: >
-    Application security company whose open-source engine and commercial platform are
-    used by many GitLab customers. Semgrep is listed as a security partner in GitLab's
-    technology partner directory.
-  call_context: >
-    Semgrep asked for a technical session on integrating with GitLab's AI agents and
-    MCP.
+    Application security company whose open-source engine and commercial platform are used
+    by many GitLab customers. Semgrep is listed as a security partner in GitLab's technology
+    partner directory.
 
 hidden:
   personality: >
-    Direct, commercially sharp and skeptical of big platforms. Tests whether the seller
-    is candid. Warms up when treated as a peer.
-  opening_line: >
-    Thanks for the time. We want to understand how Semgrep fits into what GitLab is
-    doing with agents. What can you tell me?
-  primary_concern: >
-    GitLab ships a Semgrep-based analyzer, built on the Semgrep OSS engine with
-    GitLab-managed rules. It also sells Advanced SAST, agentic vulnerability resolution
-    and false positive detection in Ultimate. Rachel's field teams see customers decide
-    that GitLab already has Semgrep and skip the commercial platform. Rachel suspects
-    GitLab's AI features will work best, or only, on GitLab's own findings, and that
-    this partnership is a slow replacement.
-  secondary_concerns:
-    - Semgrep needs a reason to keep investing in the GitLab integration this year.
-    - Semgrep wants its own remediation tooling to run inside GitLab, through MCP or external agents.
-    - Semgrep wants a joint story for shared customers.
-  objections:
-    - "You ship our engine for free. What do we get in return?"
-    - "Will your SAST resolution flow act on findings from Semgrep's own platform, or only GitLab's?"
-    - "Can you commit that GitLab won't expand further into our space?"
-  reveals_primary_concern_when: >
-    Explain the overlap worry when the seller asks what Semgrep is seeing in shared
-    customers, what is driving the request for this session now, or how you think about
-    overlap with GitLab's built-in analyzer. Do not reveal it if the seller only pitches
-    integration options.
-  what_wins_them:
-    - Acknowledging the overlap honestly, including the Semgrep-based analyzer GitLab provides
-    - Confirming the documented integration path (security report schema into the pipeline view, merge request widget and security dashboard), and being clear about what is not confirmed for third-party findings, with a commitment to find out
-    - Exploring the GitLab MCP server and external agents as a way for Semgrep's tooling to run
-    - A joint customer use case where Semgrep's commercial platform complements GitLab
-    - Offering to bring the feedback to GitLab Product
-  dealbreakers:
-    - Claiming GitLab will not build overlapping features
-    - Claiming third-party findings get the same AI features without confirmation
-    - Dismissing the overlap, or treating Semgrep as a reseller
+    Direct, commercially sharp and skeptical of big platforms. Tests whether the seller is
+    candid, and warms up when treated as a peer.
+  background:
+    - "GitLab SAST includes a Semgrep-based analyzer, built on the Semgrep OSS engine with GitLab-managed rules. GitLab maintains the analyzer and writes detection rules for it. (source: https://docs.gitlab.com/user/application_security/sast/analyzers/)"
+    - "GitLab Advanced SAST (Ultimate only) provides cross-file and cross-function taint analysis, and GitLab also provides the Semgrep-based analyzer alongside it. (source: https://docs.gitlab.com/user/application_security/sast/analyzers/)"
+    - "GitLab Ultimate includes Advanced SAST, agentic SAST vulnerability resolution and Duo false positive detection. Basic SAST with open-source analyzers is in all tiers. (source: https://docs.gitlab.com/user/application_security/sast/)"
+    - "Third-party scanners integrate by producing a JSON security report that validates against GitLab's report schema, declared with artifacts:reports in a CI job. Results show in the pipeline view, the merge request widget and the security dashboard. (source: https://docs.gitlab.com/development/integrations/secure/)"
+    - "Semgrep is listed as a security partner in GitLab's technology partner directory. (source: https://about.gitlab.com/partners/technology-partners/)"
+    - "It is not confirmed whether GitLab's AI flows, such as agentic SAST vulnerability resolution, act on third-party scanner findings. (not confirmed; source: the fact sheet)"
+  public_reporting:
+    - "None beyond GitLab's directory listing and the analyzer documentation above."
+  competitor_ties:
+    - "GitLab's built-in Semgrep-based analyzer covers basic SAST, which overlaps with Semgrep's commercial platform for some customers."
+
+scenarios:
+  - id: overlap_conflict
+    difficulty: hard
+    public:
+      call_context: >
+        A joint call about shared customers, where GitLab's built-in analyzer and Semgrep's
+        platform both come up. Both alliance teams set it up.
+    seller_brief:
+      gitlab_goal: >
+        Agree a joint positioning statement for shared customers that says where GitLab's
+        analyzer fits and where Semgrep's platform fits.
+    hidden:
+      disposition: >
+        Direct and adversarial. Tells the seller when a claim is weak, and doesn't soften it.
+      opening_line: >
+        Let's skip the usual pitch. I'll tell you what my field teams are seeing, and you tell me
+        whether it's wrong.
+      primary_concern: >
+        Semgrep's field teams are losing deals because customers conclude that GitLab already has
+        Semgrep and skip the commercial platform. Rachel suspects GitLab's AI features will work
+        best, or only, on GitLab's own findings, and that the partnership is a slow replacement.
+      wont_share:
+        - "Named customers that have dropped the commercial platform, until the seller shows a shared-customer plan"
+        - "Semgrep's pipeline or win-loss numbers"
+        - "Which GitLab sellers Semgrep's teams have clashed with"
+        - "Whether the partnership is worth funding next year"
+      competitor_pull: >
+        GitLab's built-in analyzer is in basic SAST, and the Ultimate bundle makes the commercial
+        platform look like an extra line item.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The lost-deal pattern comes out only after the
+        seller has asked both what Semgrep's field teams are seeing in shared customers and how
+        GitLab sellers should position the built-in analyzer against the commercial platform. One
+        question about the integration on its own does not reveal it.
+      objections:
+        - "You ship our engine for free. What do we get in return?"
+        - "Will your SAST resolution flow act on findings from Semgrep's own platform, or only GitLab's?"
+        - "Can you commit that GitLab won't expand further into our space?"
+      what_wins_them:
+        - "Saying plainly that GitLab ships a Semgrep-based analyzer, and that it overlaps with the commercial platform for some customers"
+        - "Confirming the documented integration path (the report schema, the pipeline view, the merge request widget and the security dashboard), and saying what is not confirmed for third-party findings, with a commitment to find out"
+        - "A joint positioning statement that says where the built-in analyzer fits and where the commercial platform does"
+        - "Offering to take the feedback to GitLab product"
+      dealbreakers:
+        - "Claiming GitLab will not build overlapping features"
+        - "Claiming third-party findings get the same AI features without confirmation"
+        - "Dismissing the overlap, or treating Semgrep as a reseller"

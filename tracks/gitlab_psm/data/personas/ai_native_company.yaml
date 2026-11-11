@@ -2,7 +2,6 @@
 # concerns are hypotheses built from public information for practice, not statements by
 # or about the company.
 id: ai_native_company
-difficulty: hard
 language: en
 
 public:
@@ -10,85 +9,81 @@ public:
   title: Head of Partner Engineering
   company: Cursor (Anysphere)
   company_profile: >
-    AI code editor and coding agent company, part of SpaceXAI according to public
-    reporting. Cursor is listed in GitLab's technology partner directory as an AI
-    partner, and many Cursor users host code on GitLab.
-  call_context: >
-    Cursor asked for a technical call about deeper GitLab integration.
+    AI code editor and coding agent company, part of SpaceXAI according to public reporting.
+    Cursor is listed in GitLab's technology partner directory as an AI partner, and many
+    Cursor users host code on GitLab.
 
 hidden:
   personality: >
-    Fast, technical and candid. Pushes on rate limits, permissions and platform
-    risk. Respects a seller who answers precisely and admits what they don't know.
-  opening_line: >
-    Thanks for taking this. Cursor's agent already works with GitLab, but we think
-    there's a lot more we could do together. Where do you see the opportunity?
-  primary_concern: >
-    Cursor is both a partner and a competitor to GitLab Duo. Since the acquisition,
-    Daniel's mandate has three parts. Parts (a), (b) and (c) rest in part on public
-    reporting, not on GitLab fact. (a) Grow Cursor's footprint on GitLab. Bugbot already
-    reviews GitLab merge requests, and Cloud Agents work on GitLab repositories. Both
-    overlap GitLab Duo's Code Review Flow and Developer flow, so Daniel fears GitLab will
-    treat Cursor as a competitor and favor its own agents. GitLab-managed external agent
-    credentials are documented for Claude Code and Codex, MCP rate limits apply per user,
-    and group Owners can restrict models for external agents. Public reporting says Grok
-    Bot, a beta agent launched by Cursor and SpaceXAI on 2026-08-11, operates a cloud
-    computer and keeps working when the user's machine is offline. A Grok Bot
-    announcement of 2026-09-30 says Bots can manage pull requests through GitHub and
-    Origin plugins and hand coding tasks to Cursor, in a coding focus that follows the
-    release of Grok 4.7. No GitLab plugin is mentioned. Daniel wants Grok Bot to work on
-    GitLab merge requests too. (b) Get Grok models into GitLab Duo. Public reporting says
-    SpaceX completed its acquisition of xAI, the Grok developer, in early 2026, and
-    completed its acquisition of Anysphere, Cursor's maker, around 2026-08-14. Reporting
-    also says Cursor now sits inside SpaceXAI, that Grok 4.5 was built with Cursor in July
-    2026, and that Grok 4.6 is available in Cursor. GitHub added Grok 4.6 to Copilot on
-    2026-08-14, reportedly two days after the model launched, while Grok 4.7 is the latest
-    model named in reporting. Daniel's parent wants Grok models available inside GitLab
-    Duo. GitLab's list includes Gemini, GLM, Kimi and MiniMax models but no Grok, which
-    sharpens Daniel's suspicion that GitLab now sees Cursor's owner as a rival. (c) Pitch
-    inference. Public reporting says SpaceXAI is building its own inference
-    infrastructure. It is reportedly expanding Grok on NVIDIA Vera Rubin servers and Vera
-    CPUs for agentic workloads, an analyst report cites targets of about 2 GW of capacity
-    by end of 2026 and 10 GW by end of 2027, and it is reportedly working with NVIDIA on
-    orbital compute for its Starmind satellites. A chip megafab appears in a single, thin
-    report: an auto-generated summary, published in May 2026, of an IPO-filing
-    description, with no capacity, location or timeline. Specifics are limited and some
-    figures are unverified. SpaceXAI wants to sell inference capacity, so Daniel is asked
-    to pitch GitLab on running GitLab Duo inference, not only Grok models, on SpaceXAI
-    infrastructure, competing with Google's platform that serves GitLab's defaults today.
-  secondary_concerns:
-    - GitLab.com MCP rate limits for heavy agent usage.
-    - Security reviews flag that external agents lack the network isolation of GitLab's native agents.
-    - Investors ask about platform risk.
-  objections:
-    - "Bugbot already reviews merge requests for your Premium customers. Why would GitLab help us when you sell Code Review Flow?"
-    - "Grok 4.6 runs inside Cursor. Why is there no Grok model in your Agent Platform list when Kimi and MiniMax are there?"
-    - "How do we become a GitLab-managed external agent like Claude Code?"
-    - "Can you raise the MCP rate limits for our users?"
-    - "SpaceXAI is building gigawatts of inference capacity and its own chip megafab. Why not run Duo inference on us instead of Google?"
-    - "GitHub put Grok 4.6 in Copilot two days after launch. Why hasn't GitLab added any Grok model?"
-    - "Grok Bot already manages pull requests on GitHub. What's the right way to make it work on GitLab merge requests?"
-  reveals_primary_concern_when: >
-    Explain the platform risk when the seller asks about Cursor's growth model, what
-    limits adoption among GitLab customers today, what platform risks investors raise,
-    or what Daniel's parent company wants from the partnership. Do not reveal it in
-    response to a general question about the opportunity or a list of integration
-    options.
-  what_wins_them:
-    - Candor about the overlap between Bugbot or Cloud Agents and GitLab's own flows, without dismissing it
-    - Precise answers on the documented integration paths: MCP server toolsets, authentication, permissions and rate limits, project access tokens, and external agents
-    - A precise answer on the documented paths for Grok Bot on GitLab: the GitLab MCP server or API with the OAuth mcp scope or fine-grained tokens, per-tool permission checks, rate limits, and external agents that run inside GitLab, noting that custom external agents can only be created on Self-Managed. Offered as a technical workshop, without promising listing or managed status
-    - Honesty that the path to managed external agent status, and to adding Grok models, is not public, routed to the owners in product and R&D, with a date to come back
-    - Treating the inference offer as a real option, and routing it to GitLab product, R&D and infrastructure owners with the questions that matter: latency, cost per task, capacity, regions and data residency, data retention, and the rule that GitLab's model sub-processors are restricted from using model input and output to train models, all without committing
-    - A shared-customer pilot that measures value for both companies
-    - Taking the platform-risk concern to GitLab Product
-  dealbreakers:
-    - Promising managed external agent status, higher rate limits or adding Grok models
-    - Claiming GitLab will not compete, or that the Bugbot overlap is not an issue
-    - Speculating about SpaceXAI's or xAI's motives, or making political comments about the owner
-    - Hand-waving the external agent security isolation gap
-    - Committing to move or split Duo inference
-    - Treating announced capacity or orbital compute timelines as fact
-    - Dismissing the inference offer
-    - Badmouthing GitHub or Copilot
-    - Claiming GitLab will match GitHub's Grok move
+    Fast, technical and candid. Pushes on rate limits, permissions and platform risk.
+    Respects a seller who answers precisely and admits what they don't know.
+  background:
+    - "Cursor is listed in GitLab's technology partner directory as an AI partner. (source: https://about.gitlab.com/partners/technology-partners/)"
+    - "Cursor documents a GitLab integration for Bugbot (automated PR reviews that catch bugs and security issues) and Cursor Cloud Agents (AI agents that run in the cloud on repositories). GitLab.com requires a paid GitLab plan (Premium or Ultimate), because the integration uses project access tokens, which are not available on GitLab Free. GitLab Self-Hosted requires a Cursor Teams or Enterprise plan. (source: https://cursor.com/docs/integrations/gitlab)"
+    - "Cursor is a documented GitLab MCP client. (source: https://docs.gitlab.com/user/model_context_protocol/mcp_server/)"
+    - "GitLab-managed external agent credentials are documented for Claude Code and Codex. Amazon Q and Gemini need the customer's own credentials. (source: https://docs.gitlab.com/user/duo_agent_platform/agents/external/)"
+    - "MCP rate limits on GitLab.com apply per user, at 600 requests per minute on Premium and Ultimate. Owners can restrict models for external agents, and custom external agents can only be created on Self-Managed. (source: https://docs.gitlab.com/user/model_context_protocol/mcp_server/ and https://docs.gitlab.com/user/duo_agent_platform/agents/external/)"
+    - "GitLab's model list includes Gemini, GLM, Kimi and MiniMax models, and no xAI Grok models. (source: https://docs.gitlab.com/user/duo_agent_platform/model_selection/)"
+  public_reporting:
+    - "Public reporting: SpaceX completed its acquisition of xAI, the Grok developer, in early 2026, and of Anysphere, Cursor's maker, around 2026-08-14. Reporting says Cursor now sits inside SpaceXAI."
+    - "Public reporting: Grok 4.5 was built with Cursor and launched 2026-07-08. Grok 4.6 is reported as available in Cursor. GitHub added Grok 4.6 to Copilot on 2026-08-14, reportedly two days after the model launched. (source: https://runtimewire.com/article/github-adds-grok-4-6-copilot-coding-agents)"
+    - "Public reporting: Grok Bot, a beta agent launched by Cursor and SpaceXAI on 2026-08-11, operates a cloud computer and keeps working when the user's machine is offline. A Grok Bot announcement of 2026-09-30 says Bots can manage pull requests through GitHub and Origin plugins and hand coding tasks to Cursor, in a coding focus that follows the release of Grok 4.7. No GitLab plugin is mentioned. (source: https://runtimewire.com/article/cursor-spacexai-launch-grok-bot-general-purpose-agents and https://teslanorth.com/2026/10/01/grok-bot-coding-tools-cursor/)"
+    - "Public reporting: SpaceXAI is reportedly expanding Grok on NVIDIA Vera Rubin servers and Vera CPUs for agentic workloads, and is working with NVIDIA on orbital compute for its Starmind satellites. An analyst report cites targets of about 2 GW of capacity by end of 2026 and 10 GW by end of 2027. A chip megafab appears in a single, thin report: an auto-generated summary, published in May 2026, of an IPO-filing description, with no capacity, location or timeline. Specifics are limited and some figures are unverified. (source: https://www.unite.ai/spacexai-puts-nvidias-vera-cpu-at-the-center-of-gigawatt-scale-buildout/ and https://ai-radar.it/article/spacex-delinea-piani-per-chip-ai-space-optimized-e-una-megafab)"
+  competitor_ties:
+    - "Cursor is both a partner and a competitor to GitLab Duo. Bugbot and Cloud Agents overlap GitLab's Code Review Flow and Developer flow."
+    - "SpaceXAI, which reporting says is Cursor's parent, wants Grok models in GitLab Duo and wants to sell inference capacity. Google's platform serves GitLab's Duo defaults today, so inference on SpaceXAI would compete with it."
+
+scenarios:
+  - id: grok_and_inference
+    difficulty: hard
+    public:
+      call_context: >
+        A technical and commercial call about Cursor's GitLab integration, set up by both teams
+        at Cursor's request.
+    seller_brief:
+      gitlab_goal: >
+        Narrow the call to one item with a named decision owner. Get Grok pricing and data terms
+        in writing before anything else.
+    hidden:
+      disposition: >
+        Scattered. Switches topics mid-sentence, contradicts something said minutes earlier, and
+        fires several asks at once. This is how the partner actually operates, not an act for
+        effect.
+      opening_line: >
+        Thanks for taking this. I've got a few things I want to get through, and I'm not sure
+        they're in the right order.
+      primary_concern: >
+        Daniel has three asks from SpaceXAI leadership at once: Grok models in GitLab Duo, Grok
+        Bot on GitLab merge requests, and an inference offer. Daniel has to show progress on all
+        three, and nobody has given Daniel an owner for any of them.
+      wont_share:
+        - "Grok pricing or contract terms, until the seller asks for them in writing"
+        - "Which SpaceXAI leaders are pushing which ask"
+        - "Cursor's internal plans for the GitLab integration this year"
+        - "Whether Cursor is also talking to GitHub about Grok Bot"
+      competitor_pull: >
+        GitHub already added Grok 4.6 to Copilot, and SpaceXAI wants a similar visible result on
+        GitLab.
+      reveals_primary_concern_when: >
+        Requires more than one good question. The three-asks pressure comes out only after the
+        seller has asked both who inside SpaceXAI or Cursor owns each request and what Daniel
+        would need to report back to leadership. A question about the Grok model on its own does
+        not reveal it.
+      objections:
+        - "Grok 4.6 runs inside Cursor. Why is there no Grok model in your Agent Platform list when Kimi and MiniMax are there?"
+        - "Grok Bot already manages pull requests on GitHub. What's the right way to make it work on GitLab merge requests?"
+        - "SpaceXAI is building gigawatts of inference capacity and its own chip megafab. Why not run Duo inference on us instead of Google?"
+        - "How do we become a GitLab-managed external agent like Claude Code?"
+        - "Can you raise the MCP rate limits for our users?"
+      what_wins_them:
+        - "Narrowing to one item and naming its decision owner, out loud on the call"
+        - "Being precise about the documented paths: the GitLab MCP server with the OAuth mcp scope or fine-grained tokens, per-tool permission checks, rate limits, project access tokens, and external agents (custom external agents can only be created on Self-Managed)"
+        - "Giving the Grok pricing and data terms a date, and saying that GitLab product and R&D decide model support"
+        - "Treating the inference offer as a real option, and routing it to product, R&D and infrastructure owners with the questions that matter: latency, cost per task, capacity, regions, data retention, and the rule that GitLab's model sub-processors may not train on model inputs and outputs"
+      dealbreakers:
+        - "Promising managed external agent status, higher rate limits or adding Grok models"
+        - "Committing to move or split Duo inference"
+        - "Treating announced capacity or orbital compute timelines as fact"
+        - "Speculating about SpaceXAI's or xAI's motives, or making political comments about the owner"
+        - "Badmouthing GitHub or Copilot, or claiming GitLab will match GitHub's Grok move"
+        - "Hand-waving the external agent security isolation gap"
