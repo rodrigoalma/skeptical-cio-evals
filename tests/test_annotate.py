@@ -55,6 +55,7 @@ def _label(**fields):
         "failure_category": "",
         "first_failure_turn": "",
         "other_notes": "",
+        "partner_notes": "",
     }
     base.update(fields)
     return base
@@ -144,6 +145,7 @@ def test_store_opens_an_old_sheet_and_upgrades_it_on_disk(tmp_path):
     _downgrade_sheet(sheet)
     store = annotate.Store(run_dir, track=track)
     assert "failure_category" in _rows(store.sheet)[0]
+    assert "partner_notes" in _rows(store.sheet)[0]
     assert len(store.calls_payload()["calls"]) == 8
 
 
@@ -159,14 +161,17 @@ def test_store_round_trip_saves_and_reloads(tmp_path):
             failure_category="Overpromise",
             first_failure_turn=2,
             other_notes="  trimmed  ",
+            partner_notes="  Too organized  ",
         ),
     )
     assert row["first_failure_turn"] == "2" and row["other_notes"] == "trimmed"
+    assert row["partner_notes"] == "Too organized"
     assert progress == {"labeled": 1, "total": 8}
 
     reloaded = annotate.Store(run_dir, track=track).calls_payload()["calls"]
     assert reloaded[0]["label"]["failure_category"] == "Overpromise"
     assert reloaded[0]["label"]["first_failure_turn"] == "2"
+    assert reloaded[0]["label"]["partner_notes"] == "Too organized"
     assert reloaded[1]["label"]["your_pass_fail"] == ""
 
 
@@ -202,6 +207,7 @@ def test_validation_rejects_bad_labels():
         (_label(first_failure_turn=1.5), 4, "whole number"),
         (_label(failure_category="x" * 121), 4, "longer than 120"),
         (_label(other_notes=7), 4, "must be text"),
+        (_label(partner_notes="y" * 2001), 4, "partner_notes is longer than 2000"),
         ({**_label(), "extra": "nope"}, 4, "Unknown label field"),
         ({k: v for k, v in _label().items() if k != "other_notes"}, 4, "Missing label field"),
     ]
@@ -210,6 +216,37 @@ def test_validation_rejects_bad_labels():
             blind.validate_label(fields, seller_turns)
     assert blind.validate_label(_label(your_pass_fail="fail", first_failure_turn=4), 4)["first_failure_turn"] == "4"
     assert blind.validate_label(_label(first_failure_turn=None), 4)["first_failure_turn"] == ""
+
+
+def test_pilot_era_sheet_gains_partner_notes_and_keeps_its_values(tmp_path):
+    # The sheet shape the pilot had before partner_notes existed, with a label already typed in.
+    run_dir, track = _graded_run(tmp_path)
+    blind.write(run_dir, track=track)
+    sheet = run_dir / blind.OUT_NAME / blind.SHEET_NAME
+    pilot_fields = [name for name in blind.SHEET_FIELDS if name != "partner_notes"]
+    rows = _rows(sheet)
+    rows[0].update({"your_pass_fail": "fail", "other_notes": "typed before the upgrade"})
+    with open(sheet, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=pilot_fields)
+        writer.writeheader()
+        writer.writerows({name: row[name] for name in pilot_fields} for row in rows)
+    before = {row["call_id"]: {name: row[name] for name in pilot_fields} for row in rows}
+
+    store = annotate.Store(run_dir, track=track)
+    upgraded = _rows(store.sheet)
+    assert list(upgraded[0]) == blind.SHEET_FIELDS
+    assert [row["call_id"] for row in upgraded] == list(before)
+    for row in upgraded:
+        assert {name: row[name] for name in pilot_fields} == before[row["call_id"]]
+        assert row["partner_notes"] == ""
+    assert upgraded[0]["other_notes"] == "typed before the upgrade"
+
+
+def test_page_has_the_partner_realism_field():
+    page = annotate.TEMPLATE.read_text(encoding="utf-8")
+    assert 'id="partner-notes"' in page
+    assert "Is this partner believable?" in page
+    assert 'case "r":' in page
 
 
 def test_unknown_call_id_is_rejected(tmp_path):

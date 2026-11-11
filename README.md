@@ -269,8 +269,11 @@ server, and closing the SSH session stops the tunnel.
 
 The page's legend lists the keys. In short: `p` and `f` set pass or fail, `x` marks
 the first failure at the focused seller turn, `j` and `k` move between calls, `u`
-jumps to the next unlabeled call, and `s` opens the summary. A sheet from an older
-version is upgraded in place when the page opens it, and its values are kept.
+jumps to the next unlabeled call, and `s` opens the summary. `r` focuses the partner
+realism note, for comments on whether the simulated partner is believable. That note
+is kept apart from the seller's failures and doesn't count toward a call being labeled.
+A sheet from an older version is upgraded in place when the page opens it, and its
+values are kept.
 
 ## Agent skills
 

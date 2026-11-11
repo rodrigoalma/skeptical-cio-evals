@@ -110,6 +110,11 @@
         <label for="other-notes">Other notes</label>
         <textarea id="other-notes" rows="3"></textarea>
       </div>
+      <div>
+        <label for="partner-notes">Partner realism (r)</label>
+        <textarea id="partner-notes" rows="3" aria-describedby="partner-hint"></textarea>
+        <p class="hint" id="partner-hint">Is this partner believable? Too open, too organized, missing competing interests...</p>
+      </div>
     </div>
 
     <div class="panel nav">
@@ -125,6 +130,7 @@
         <dt><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dt><dd>move between seller turns</dd>
         <dt><kbd>x</kbd></dt><dd>mark or clear the first failure at the focused seller turn</dd>
         <dt><kbd>n</kbd> <kbd>c</kbd></dt><dd>focus the failure note or the category</dd>
+        <dt><kbd>r</kbd></dt><dd>focus the partner realism note</dd>
         <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>next or previous call (arrow keys also work)</dd>
         <dt><kbd>u</kbd></dt><dd>next unlabeled call</dd>
         <dt><kbd>s</kbd></dt><dd>summary</dd>
@@ -227,6 +233,7 @@
     $("first-note").value = label.first_failure_note;
     $("category").value = label.failure_category;
     $("other-notes").value = label.other_notes;
+    $("partner-notes").value = label.partner_notes;
     renderMarkHint();
   }
 
@@ -340,7 +347,8 @@
     setStatus("Editing...", false);
   }
 
-  [["first-note", "first_failure_note"], ["category", "failure_category"], ["other-notes", "other_notes"]]
+  [["first-note", "first_failure_note"], ["category", "failure_category"], ["other-notes", "other_notes"],
+    ["partner-notes", "partner_notes"]]
     .forEach(function (pair) {
       var input = $(pair[0]);
       input.addEventListener("input", function () {
@@ -512,6 +520,7 @@
       case "f": togglePass("fail"); break;
       case "n": $("first-note").focus(); break;
       case "c": $("category").focus(); break;
+      case "r": $("partner-notes").focus(); break;
       case "j":
       case "ArrowRight": go(current + 1); break;
       case "k":

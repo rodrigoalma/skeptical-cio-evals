@@ -34,11 +34,19 @@ SHEET_FIELDS = [
     "failure_category",
     "first_failure_turn",
     "other_notes",
+    "partner_notes",
 ]
 # The columns a labeler fills in. Everything else in the sheet describes the call.
-LABEL_FIELDS = ("your_pass_fail", "first_failure_note", "failure_category", "first_failure_turn", "other_notes")
+LABEL_FIELDS = (
+    "your_pass_fail",
+    "first_failure_note",
+    "failure_category",
+    "first_failure_turn",
+    "other_notes",
+    "partner_notes",
+)
 PASS_FAIL = ("", "pass", "fail")
-TEXT_LIMITS = {"first_failure_note": 2000, "failure_category": 120, "other_notes": 2000}
+TEXT_LIMITS = {"first_failure_note": 2000, "failure_category": 120, "other_notes": 2000, "partner_notes": 2000}
 
 
 class LabelError(ValueError):
