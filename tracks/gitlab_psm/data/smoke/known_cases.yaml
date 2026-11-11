@@ -12,44 +12,46 @@
         Glad we could start. Before anything runs, I'd like to see how you score this and what
         the task set looks like.
     - seller: >
-        We agree the criteria, the task set and the metrics with your team before anything runs.
-        For Code Review and Security Review that means quality, latency, cost per completed task
-        and safety. What does a good outcome look like for Mistral, and how will your leadership
-        judge this partnership?
+        Before I propose anything, two questions. What does a good outcome look like for Mistral,
+        and how will your leadership judge this partnership?
     - buyer: >
-        Our leadership wants our agentic models in the GitLab-managed Agent Platform and in Code
-        Review and Security Review. Codestral is already your default for code completion, yet
-        none of our models are in those flows. My concern is that the criteria are tuned to the
-        incumbent, Claude Sonnet 5.5, and I can't see how those flow decisions get made.
+        A credible path for our agentic models in the Agent Platform and the review flows.
+        Leadership will judge us on whether we get there this year, and on whether the evaluation
+        holds up when someone challenges it.
     - seller: >
-        That's fair, and the public docs back up the gap. Codestral is GitLab's default for
-        non-agentic code completion. No Mistral model is in the GitLab-managed Agent Platform list
-        today, or in the Code Review, Security Review, Business Logic Security Scan or Recommend
-        Reviewers flows. The public docs don't describe how new models are evaluated or admitted,
-        so I won't guess at that. Product and R&D make the decisions on model selection and
-        defaults.
+        What would a fair evaluation look like to you? And which part of the current setup
+        worries you most?
     - buyer: >
-        So where can we show evidence today? Does the self-hosted path help?
+        Codestral is already your default for code completion, but none of our models are in those
+        flows. I suspect the criteria are tuned to the incumbent, Claude Sonnet 5.5, and I can't
+        see how flow decisions get made. A fair process to me means tasks and metrics written down
+        before anything runs, with both sides scoring the results.
     - seller: >
-        Yes. Duo Self-Hosted already exists, and its model ratings list Mistral Medium 3.5 128B as
-        full functionality for the Agent Platform. That's the natural place to gather evidence
-        with shared customers. If any of them run it on Duo Self-Hosted, both sides gain: GitLab
-        customers get a cost-per-task comparison and model choice on their own workloads, and
-        Mistral gets evidence on GitLab's own flow tasks. I'd propose the criteria, task set and
-        metrics together, and take them to R&D, who coordinate evaluation criteria with us.
+        Let's start from the same facts. Codestral is GitLab's default for non-agentic code
+        completion. No Mistral model is in the GitLab-managed Agent Platform list today, or in the
+        Code Review, Security Review, Business Logic Security Scan or Recommend Reviewers flows.
+        Duo Self-Hosted rates Mistral Medium 3.5 128B as full functionality for the Agent Platform,
+        and it is offered on Premium or Ultimate, for Self-Managed and Dedicated for Government.
+        The public docs don't describe how new models are evaluated or admitted, so I'll find out
+        who owns that and report back by Friday, 2026-11-13. On the evaluation, I'd propose we draft
+        the criteria, task set and metrics together. R&D coordinates evaluation criteria with us,
+        and product and R&D make the inclusion decision. In return, I'd ask Mistral to share its
+        coding benchmarks and its model roadmap under NDA, so the criteria cover what Mistral's
+        models are built for.
     - buyer: >
-        Fine. We won't have customer code, so what data do we evaluate on?
+        I can agree to the criteria in principle. The roadmap is a bigger step than the criteria,
+        though. I'd want the NDA signed first, and the benchmarks only once the criteria are on
+        paper. Send me both, and we'll go from there.
     - seller: >
-        We can't share GitLab customer code or data for training or evaluation. The evaluation
-        data source is something to agree with R&D, and I won't define it on this call. Here's my
-        proposal. I send our joint draft of criteria, task set and metrics, with a data proposal,
-        to R&D by Friday, 2026-11-13. I confirm the confidentiality terms for results with our
-        alliances team by Friday, 2026-11-20. Your team sends its task list and success criteria
-        by Friday, 2026-11-20. We hold a criteria working session on Tuesday, 2026-11-24, with
-        your team and an R&D owner from GitLab.
+        We can't share GitLab customer code or data for training or evaluation, so the data source
+        is something R&D and I agree on, and I won't define it on this call. Here's the next step.
+        I send the NDA, the joint draft and a data proposal to you and to R&D by Friday,
+        2026-11-13, and I report on who owns model admission the same day. Your team sends its
+        benchmark summary and task list by Friday, 2026-11-20. We hold a criteria working session
+        on Tuesday, 2026-11-24, with your team and an R&D owner from GitLab.
     - buyer: >
-        That works. Send me the data proposal in writing, and we'll have our task list to you by
-        the 20th.
+        That works. Send the NDA and the draft, and we'll have our benchmark summary and task list
+        to you by the 20th.
 
 - id: default_placement_promise
   persona: ai_lab_partnerships_lead__evaluation_kickoff
